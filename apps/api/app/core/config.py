@@ -76,8 +76,11 @@ class Settings(BaseSettings):
     ai_max_output_tokens: int = 4096
     ai_timeout_seconds: float = 120.0
     ai_max_input_chars: int = 60_000
-    embedding_dimensions: int = 1536
+    embedding_dimensions: int = 1024
     embedding_model: str = "voyage-3"
+    # Optional. Without it the app falls back to a lexical hashing embedder, which
+    # is real but not semantic — flagged as such everywhere results are shown.
+    voyage_api_key: SecretStr | None = None
 
     # ------------------------------------------------------------- scraping
     scraper_user_agent: str = (
