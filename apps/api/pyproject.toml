@@ -1,0 +1,80 @@
+[project]
+name = "sentinel-api"
+version = "0.1.0"
+description = "Sentinel — AI competitor intelligence API and workers"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "email-validator>=2.2",
+    "sqlalchemy[asyncio]>=2.0.35",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "pgvector>=0.3",
+    "redis>=5.0",
+    "celery[redis]>=5.4",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.3",
+    "argon2-cffi>=23.1",
+    "pyjwt>=2.9",
+    "structlog>=24.4",
+    "tenacity>=9.0",
+    "anthropic>=0.39",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "ruff>=0.7",
+    "mypy>=1.11",
+    "aiosqlite>=0.20",
+]
+js = ["playwright>=1.47"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "ASYNC", "S", "RUF"]
+ignore = [
+    "B008",   # FastAPI Depends() in defaults is the documented idiom
+    "S101",   # asserts are fine in tests
+    "SIM108", # ternaries are not always clearer
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106", "S311"]
+"app/ai/mock.py" = ["S311"]  # deterministic non-crypto RNG, documented in module
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: requires a live PostgreSQL database (set TEST_DATABASE_URL)",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
+exclude = "alembic/"
