@@ -21,6 +21,7 @@ from app.api.v1 import api_router, health
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import configure_logging, get_logger
+from app.core.observability import configure_observability
 from app.db.session import dispose_engine
 
 log = get_logger(__name__)
@@ -98,6 +99,10 @@ def create_app() -> FastAPI:
     app.include_router(api_router, prefix=settings.api_v1_prefix)
 
     _register_exception_handlers(app)
+
+    # No-ops unless SENTRY_DSN or OTEL_EXPORTER_OTLP_ENDPOINT is configured.
+    configure_observability("api", app)
+
     return app
 
 

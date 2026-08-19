@@ -373,9 +373,14 @@ with a single accent, and semantic status colours. Dark mode via CSS custom prop
 
 `structlog` JSON to stdout. Every line carries `request_id` (or `task_id`),
 `organization_id`, and where relevant `competitor_id`, `job_id` and `duration_ms`.
-Sentry and OpenTelemetry are wired behind config flags — enabled by setting a DSN or
-endpoint, with no code change. `/health` (liveness) and `/health/ready` (DB + Redis)
-are deliberately separate.
+Sentry and OpenTelemetry are implemented in `app/core/observability.py`, enabled by
+setting `SENTRY_DSN` or `OTEL_EXPORTER_OTLP_ENDPOINT`, and installed with the optional
+`observability` extra. A DSN configured without the package logs a warning rather than
+passing silently — an operator who believes errors are captured when they are not is worse
+off than one who knows. Sentry runs with `send_default_pii=False` and a scrubbing
+`before_send`, and the same setup runs in the workers.
+
+`/health` (liveness) and `/health/ready` (DB + Redis) are deliberately separate.
 
 ---
 
@@ -395,12 +400,15 @@ Stated plainly, so these docs describe reality:
 
 * **Billing.** `organizations.plan` and quotas exist and are enforced; there is no
   payment provider integration.
-* **Review data.** The `ReviewProvider` interface and sentiment analysis exist, but no
-  review source is configured, so sentiment reports "Insufficient data". No review data
-  is fabricated to fill the gap.
+* **Review data.** `app/services/reviews.py` defines the `ReviewProvider` protocol and
+  wires it into scoring, so connecting a source makes the sentiment dimension live without
+  touching the scoring engine. **No source is implemented**, so the default provider
+  returns nothing and sentiment reports "Insufficient data". No review data is fabricated
+  to fill the gap.
 * **Ad intelligence.** Ad libraries require credentialed APIs; the schema and interface
   are absent rather than faked.
-* **PDF export.** Reports are generated as structured documents rendered in-app; the
-  export interface exists, the PDF renderer does not.
+* **PDF export.** Reports are stored as structured documents rather than rendered HTML,
+  specifically so a renderer can be added later without regenerating them. **No renderer
+  and no export endpoint exist.**
 * **Email delivery.** Notifications are persisted and rendered in-app; the SMTP channel
   sits behind an interface with a console implementation for development.

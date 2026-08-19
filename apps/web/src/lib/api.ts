@@ -188,6 +188,8 @@ export const api = {
     passwordResetConfirm: "/api/v1/auth/password-reset/confirm",
     changePassword: "/api/v1/auth/password",
   },
+  // Not organization-scoped: the invitee is not a member yet.
+  invitations: { accept: "/api/v1/orgs/invitations/accept" },
   org: (orgId: string) => ({
     root: `/api/v1/orgs/${orgId}`,
     dashboard: `/api/v1/orgs/${orgId}/dashboard`,

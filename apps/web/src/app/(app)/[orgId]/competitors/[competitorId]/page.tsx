@@ -13,6 +13,11 @@ import { notFound } from "next/navigation";
 
 import { AnalyzeButton, JobProgress } from "@/components/competitor-actions";
 import {
+  ArchiveCompetitorButton,
+  CompetitorSettings,
+  DeleteCompetitorButton,
+} from "@/components/competitor-settings";
+import {
   DataNotes,
   Favicon,
   InjectionNotice,
@@ -121,13 +126,25 @@ export default async function CompetitorDetailPage({
             </div>
           </div>
 
-          <AnalyzeButton
-            orgId={orgId}
-            competitorId={competitorId}
-            disabled={Boolean(running_job)}
-          />
+          <div className="flex flex-wrap items-start gap-2">
+            <CompetitorSettings orgId={orgId} competitor={competitor} />
+            <ArchiveCompetitorButton orgId={orgId} competitor={competitor} />
+            <DeleteCompetitorButton orgId={orgId} competitor={competitor} />
+            <AnalyzeButton
+              orgId={orgId}
+              competitorId={competitorId}
+              disabled={Boolean(running_job)}
+            />
+          </div>
         </div>
       </div>
+
+      {competitor.status === "archived" ? (
+        <Callout tone="neutral" title="This competitor is archived">
+          Scheduled crawls are paused and no spend accrues. Their history is intact —
+          restore them to resume monitoring.
+        </Callout>
+      ) : null}
 
       {running_job ? <JobProgress orgId={orgId} job={running_job} /> : null}
       {analysis?.is_mock ? <MockProviderNotice /> : null}

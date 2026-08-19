@@ -46,6 +46,7 @@ from app.db.models.monitoring import Change
 from app.scraping.crawler import CrawlResult, crawl_site
 from app.scraping.urls import url_hash
 from app.services import alerts, audit, organizations
+from app.services import reviews as review_service
 from app.services.changes import CompetitorState, PlanState, detect_changes, normalize_name
 from app.services.scoring import ScoringInput, compute_score
 
@@ -270,6 +271,19 @@ async def _execute(
     # product, plan and page would register as "added", which is noise, not intelligence.
     had_previous_analysis = await _has_previous_analysis(session, competitor.id)
 
+    # No review source is configured by default, so this returns an empty batch and the
+    # sentiment dimension stays "insufficient data" rather than being invented.
+    review_provider = review_service.build_review_provider()
+    try:
+        review_batch = await review_provider.fetch(
+            domain=competitor.domain, company_name=competitor.name
+        )
+    except Exception as exc:  # a review source must never fail an analysis
+        log.warning("analysis.reviews_unavailable", error=str(exc)[:200])
+        review_batch = review_service.ReviewBatch()
+    finally:
+        await review_provider.aclose()
+
     await _set_stage(session, job, "storing_snapshots")
     await _store_snapshots(session, competitor=competitor, crawl=crawl)
     await organizations.record_usage(session, competitor.organization_id, pages=len(crawl.pages))
@@ -384,6 +398,7 @@ async def _execute(
         positioning=positioning.data,
         crawl=crawl,
         seo=seo,
+        reviews=review_batch,
     )
     await _store_embeddings(session, competitor=competitor, crawl=crawl, ai=ai)
     await session.commit()
@@ -732,6 +747,7 @@ async def _store_score(
     positioning: PositioningResult,
     crawl: CrawlResult,
     seo: SeoSnapshot,
+    reviews: review_service.ReviewBatch,
 ) -> Score:
     products = extraction.products
     plans = extraction.pricing_plans
@@ -771,6 +787,8 @@ async def _store_score(
         ),
         has_favicon=bool(competitor.favicon_url),
         external_link_count=len(_external_links(crawl)),
+        review_count=reviews.count,
+        sentiment_score=reviews.sentiment_score,
     )
 
     result = compute_score(scoring_input)

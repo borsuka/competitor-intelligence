@@ -11,6 +11,7 @@ from celery.signals import setup_logging, worker_process_init
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
+from app.core.observability import configure_observability
 
 log = get_logger(__name__)
 settings = get_settings()
@@ -67,6 +68,9 @@ celery_app.conf.beat_schedule = {
 def _configure_celery_logging(**_kwargs) -> None:
     """Use the application's structured logging instead of Celery's default format."""
     configure_logging()
+    # Workers need the same error tracking as the API. An analysis failing silently in a
+    # background process is exactly the failure a tracker exists to catch.
+    configure_observability("worker")
 
 
 @worker_process_init.connect

@@ -142,8 +142,17 @@ Health endpoints are separate on purpose:
 * `/health/ready` — checks PostgreSQL and Redis, returns 503 when either is down. Use this
   for the load balancer.
 
-Sentry and OpenTelemetry are wired behind `SENTRY_DSN` and `OTEL_EXPORTER_OTLP_ENDPOINT` —
-setting them is the whole integration.
+Sentry and OpenTelemetry are enabled by `SENTRY_DSN` and `OTEL_EXPORTER_OTLP_ENDPOINT`.
+They are optional dependencies, so the production image needs the extra:
+
+```dockerfile
+RUN pip install -e ".[observability]"
+```
+
+Setting a DSN without installing the extra logs a warning at startup rather than passing
+silently. Sentry is configured with `send_default_pii=False` and a scrubbing `before_send`
+— this product holds competitor data on behalf of tenants, and shipping request bodies to
+a third party is not a default worth having.
 
 Worth alerting on: `analysis_jobs` stuck in `running` past 45 minutes (the sweeper handles
 it, but a spike means something else is wrong), quota rejections rising, and

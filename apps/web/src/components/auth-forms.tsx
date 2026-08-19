@@ -12,7 +12,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -43,15 +43,22 @@ type RegisterValues = z.infer<typeof registerSchema>;
 
 function useAuthSubmit() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
 
   async function submit(path: string, body: unknown) {
     setFormError(null);
     try {
       const session = await clientFetch<Session>(path, { method: "POST", body });
+
+      // Only same-origin relative paths are followed. An absolute URL here would be an
+      // open redirect: an attacker mails a login link that lands on their own page.
+      const next = searchParams.get("next");
+      const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+
       const organization = session.organizations[0];
       // Refresh so the server components re-run with the new session cookie.
-      router.replace(organization ? `/${organization.id}` : "/");
+      router.replace(safeNext ?? (organization ? `/${organization.id}` : "/"));
       router.refresh();
     } catch (error) {
       if (error instanceof ApiClientError) {
@@ -98,15 +105,32 @@ export function LoginForm() {
           />
         </Field>
 
-        <Field label="Password" htmlFor="password" error={errors.password?.message}>
+        <div>
+          <div className="mb-1.5 flex items-baseline justify-between gap-2">
+            <label htmlFor="password" className="block text-sm font-medium text-ink">
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-sm text-ink-muted hover:text-accent hover:underline"
+            >
+              Forgot?
+            </Link>
+          </div>
           <Input
             id="password"
             type="password"
             autoComplete="current-password"
             aria-invalid={Boolean(errors.password)}
+            aria-describedby={errors.password ? "password-error" : undefined}
             {...register("password")}
           />
-        </Field>
+          {errors.password?.message ? (
+            <p id="password-error" role="alert" className="mt-1.5 text-sm text-critical">
+              {errors.password.message}
+            </p>
+          ) : null}
+        </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="animate-spin" aria-hidden /> : null}

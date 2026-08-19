@@ -52,10 +52,16 @@ class TimestampMixin:
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # onupdate is a Python callable, not func.now().  With a SQL expression SQLAlchemy
+    # does not know the new value, so it expires the attribute and refreshes it on next
+    # access — which, after the request has committed, is IO outside the greenlet asyncpg
+    # needs, and raises MissingGreenlet while serialising the response.  A client-side
+    # default is known immediately and needs no refresh.  The database clock stays
+    # authoritative for created_at, which is assigned on INSERT and returned by RETURNING.
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        onupdate=func.now(),
+        onupdate=utcnow,
         nullable=False,
     )
 

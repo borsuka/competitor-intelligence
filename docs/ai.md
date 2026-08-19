@@ -170,6 +170,22 @@ never presented as more than it is.
 
 ---
 
+## Review data
+
+`SentimentResult` and the sentiment scoring dimension exist, and
+`app/services/reviews.py` defines the provider protocol the analysis pipeline calls.
+
+**No review source is implemented.** The default provider returns nothing, the sentiment
+dimension scores `null`, and the UI shows "Insufficient data". Connecting a source means
+implementing `ReviewProvider` and returning it from `build_review_provider()` — scoring
+and the pipeline need no changes.
+
+Inventing reviews to make the dimension look populated would be the most damaging thing
+this product could do, so the empty state is the correct behaviour rather than a gap to
+paper over.
+
+---
+
 ## Adding a provider
 
 1. Implement `complete_structured(spec, *, model, max_tokens) -> AIResult` in

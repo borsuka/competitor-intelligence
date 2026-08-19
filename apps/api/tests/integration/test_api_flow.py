@@ -590,6 +590,92 @@ class TestTeamManagement:
         assert response.json()["error"]["code"] == "cannot_invite_owner"
 
 
+class TestCompetitorManagement:
+    """Editing a competitor writes `updated_at`, which is where a server-side onupdate
+    would expire the attribute and blow up while serialising the response."""
+
+    async def test_edit_returns_the_updated_competitor(self, client, cleanup, offline_urls):
+        _, org_id = await register(client, email="edit@example.com")
+        created = await client.post(
+            f"/api/v1/orgs/{org_id}/competitors",
+            json={"website_url": "https://editable.test", "name": "Before", "analyze_now": False},
+        )
+        competitor_id = created.json()["id"]
+
+        response = await client.patch(
+            f"/api/v1/orgs/{org_id}/competitors/{competitor_id}",
+            json={
+                "name": "After",
+                "importance": "critical",
+                "tags": ["direct", "enterprise"],
+                "category": "Analytics",
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["name"] == "After"
+        assert body["importance"] == "critical"
+        # Importance drives the crawl interval, so changing it must change the schedule.
+        assert body["monitoring_interval_hours"] == 12
+        assert set(body["tags"]) == {"direct", "enterprise"}
+
+    async def test_archive_stops_monitoring_and_leaves_the_active_list(
+        self, client, cleanup, offline_urls
+    ):
+        _, org_id = await register(client, email="archive@example.com")
+        created = await client.post(
+            f"/api/v1/orgs/{org_id}/competitors",
+            json={"website_url": "https://archivable.test", "analyze_now": False},
+        )
+        competitor_id = created.json()["id"]
+
+        archived = await client.patch(
+            f"/api/v1/orgs/{org_id}/competitors/{competitor_id}",
+            json={"status": "archived"},
+        )
+        assert archived.status_code == 200
+        assert archived.json()["monitoring_enabled"] is False
+        assert archived.json()["next_monitor_at"] is None
+
+        active = await client.get(f"/api/v1/orgs/{org_id}/competitors")
+        assert active.json()["meta"]["total"] == 0
+
+        listed = await client.get(f"/api/v1/orgs/{org_id}/competitors?status=archived")
+        assert listed.json()["meta"]["total"] == 1
+
+        # Archiving must be reversible, otherwise users reach for delete instead.
+        restored = await client.patch(
+            f"/api/v1/orgs/{org_id}/competitors/{competitor_id}",
+            json={"status": "active"},
+        )
+        assert restored.json()["monitoring_enabled"] is True
+
+    async def test_delete_hides_the_competitor_but_keeps_the_domain_reusable(
+        self, client, cleanup, offline_urls
+    ):
+        _, org_id = await register(client, email="delete@example.com")
+        created = await client.post(
+            f"/api/v1/orgs/{org_id}/competitors",
+            json={"website_url": "https://deletable.test", "analyze_now": False},
+        )
+        competitor_id = created.json()["id"]
+
+        deleted = await client.delete(f"/api/v1/orgs/{org_id}/competitors/{competitor_id}")
+        assert deleted.status_code == 204
+
+        gone = await client.get(f"/api/v1/orgs/{org_id}/competitors/{competitor_id}")
+        assert gone.status_code == 404
+
+        # Soft deleted, so re-adding the same domain restores the row rather than
+        # colliding with the unique index.
+        again = await client.post(
+            f"/api/v1/orgs/{org_id}/competitors",
+            json={"website_url": "https://deletable.test", "analyze_now": False},
+        )
+        assert again.status_code == 201
+
+
 class TestHealth:
     async def test_liveness_does_not_touch_dependencies(self, client):
         response = await client.get("/health")
