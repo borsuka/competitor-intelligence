@@ -10,7 +10,8 @@ from fastapi import APIRouter, status
 from app.api.deps import AdminScope, CurrentUser, Scope, SessionDep
 from app.core.config import get_settings
 from app.core.errors import NotFoundError
-from app.db.models.identity import Organization
+from app.db.models.identity import Organization, User
+from app.schemas.auth import AcceptInvitationRequest
 from app.schemas.common import MessageResponse
 from app.schemas.competitor import (
     InviteRequest,
@@ -94,10 +95,9 @@ async def invite_member(
 
 @router.post("/invitations/accept", response_model=MessageResponse)
 async def accept_invitation(
-    payload: dict, session: SessionDep, user: CurrentUser
+    payload: AcceptInvitationRequest, session: SessionDep, user: CurrentUser
 ) -> MessageResponse:
-    token = str(payload.get("token", ""))
-    await org_service.accept_invitation(session, token=token, user=user)
+    await org_service.accept_invitation(session, token=payload.token, user=user)
     await session.commit()
     return MessageResponse(message="You have joined the organization.")
 
@@ -110,7 +110,10 @@ async def change_role(
         session, scope, member_id=member_id, role=payload.role
     )
     await session.commit()
-    user = membership.user
+
+    # Loaded explicitly: Membership.user is a lazy relationship, and touching it here
+    # would trigger IO outside the greenlet context asyncpg needs.
+    user = await session.get(User, membership.user_id)
     return MemberResponse(
         id=membership.id,
         user_id=membership.user_id,

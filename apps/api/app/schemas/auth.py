@@ -55,6 +55,10 @@ class EmailVerificationRequest(APIModel):
     token: str = Field(min_length=10, max_length=200)
 
 
+class AcceptInvitationRequest(APIModel):
+    token: str = Field(min_length=10, max_length=200)
+
+
 class OrganizationSummary(APIModel):
     id: uuid.UUID
     name: str
@@ -87,6 +91,7 @@ class RegisterResponse(SessionResponse):
 
 
 __all__ = [
+    "AcceptInvitationRequest",
     "EmailVerificationRequest",
     "LoginRequest",
     "OrganizationSummary",
