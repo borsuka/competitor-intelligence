@@ -168,3 +168,31 @@ class TestEscapeHatch:
 
         with _pytest.raises(ValueError, match="SCRAPER_ALLOW_PRIVATE_NETWORKS"):
             Settings()
+
+
+class TestFaviconUrl:
+    """The favicon URL is built from the competitor's own origin.
+
+    Assuming https on the default port produces a URL the browser cannot reach for any
+    site served over plain HTTP or on another port, and the request hangs until it times
+    out rather than failing fast — which stalls the page that embeds it.
+    """
+
+    def test_keeps_the_site_scheme(self) -> None:
+        from app.services.competitors import favicon_url_for
+
+        assert favicon_url_for("http://example.org/") == "http://example.org/favicon.ico"
+        assert favicon_url_for("https://example.org/") == "https://example.org/favicon.ico"
+
+    def test_keeps_a_non_default_port(self) -> None:
+        from app.services.competitors import favicon_url_for
+
+        assert favicon_url_for("http://127.0.0.1:4319/") == "http://127.0.0.1:4319/favicon.ico"
+
+    def test_drops_the_path(self) -> None:
+        from app.services.competitors import favicon_url_for
+
+        assert (
+            favicon_url_for("https://shop.example.com/pricing")
+            == "https://shop.example.com/favicon.ico"
+        )

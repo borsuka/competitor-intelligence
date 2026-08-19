@@ -23,7 +23,7 @@ test.describe("Comparison and reports", () => {
     ] as const) {
       await addCompetitor(page, orgId, { name, host });
       await page.getByRole("link", { name: new RegExp(name) }).click();
-      await page.waitForURL(/\/competitors\/[0-9a-f-]{36}/);
+      await page.waitForURL(/\/competitors\/[0-9a-f-]{36}/, { waitUntil: "commit" });
       await waitForAnalysis(page);
     }
 
@@ -90,7 +90,7 @@ test.describe("Comparison and reports", () => {
 
     // Generation is synchronous because it only reads stored rows — nothing is
     // re-crawled, so there is no job to wait on.
-    await page.waitForURL(/\/reports\/[0-9a-f-]{36}/, { timeout: 30_000 });
+    await page.waitForURL(/\/reports\/[0-9a-f-]{36}/, { waitUntil: "commit", timeout: 30_000 });
 
     await expect(page.getByRole("heading", { name: "At a glance" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Pricing" })).toBeVisible();
@@ -112,7 +112,7 @@ test.describe("Comparison and reports", () => {
     await dialog.getByLabel("Report type").selectOption("weekly_intelligence");
     await dialog.getByRole("button", { name: "Generate" }).click();
 
-    await page.waitForURL(/\/reports\/[0-9a-f-]{36}/, { timeout: 30_000 });
+    await page.waitForURL(/\/reports\/[0-9a-f-]{36}/, { waitUntil: "commit", timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "Activity in this period" })).toBeVisible();
     await expect(page.getByText(/No changes were detected/)).toBeVisible();
   });

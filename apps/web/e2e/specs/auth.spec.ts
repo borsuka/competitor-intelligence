@@ -28,11 +28,11 @@ test.describe("Authentication", () => {
 
     await page.getByRole("button", { name: /End To End/ }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
-    await page.waitForURL(/\/login/);
+    await page.waitForURL(/\/login/, { waitUntil: "commit" });
 
     // The dashboard must not be reachable afterwards, cookie cleared or not.
     await page.goto(`/${orgId}`);
-    await page.waitForURL(/\/login/);
+    await page.waitForURL(/\/login/, { waitUntil: "commit" });
   });
 
   test("a wrong password is refused without saying which field was wrong", async ({ page }) => {
@@ -40,7 +40,7 @@ test.describe("Authentication", () => {
 
     await page.getByRole("button", { name: /End To End/ }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
-    await page.waitForURL(/\/login/);
+    await page.waitForURL(/\/login/, { waitUntil: "commit" });
 
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill("definitely-not-the-password");
@@ -92,21 +92,21 @@ test.describe("Authentication", () => {
     const { email } = await registerAndSignIn(page, "next");
     await page.getByRole("button", { name: /End To End/ }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
-    await page.waitForURL(/\/login/);
+    await page.waitForURL(/\/login/, { waitUntil: "commit" });
 
     await page.goto("/login?next=%2Finvite%3Ftoken%3Dsome-token");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    await page.waitForURL(/\/invite\?token=some-token/);
+    await page.waitForURL(/\/invite\?token=some-token/, { waitUntil: "commit" });
   });
 
   test("an absolute next target is ignored rather than followed", async ({ page }) => {
     const { email } = await registerAndSignIn(page, "openredirect");
     await page.getByRole("button", { name: /End To End/ }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
-    await page.waitForURL(/\/login/);
+    await page.waitForURL(/\/login/, { waitUntil: "commit" });
 
     // A mailed sign-in link that bounces the user to an attacker's page is the classic
     // open redirect. Only relative paths are honoured.
@@ -115,7 +115,7 @@ test.describe("Authentication", () => {
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    await page.waitForURL(/\/[0-9a-f-]{36}$/);
+    await page.waitForURL(/\/[0-9a-f-]{36}$/, { waitUntil: "commit" });
     expect(page.url()).not.toContain("evil.example.com");
   });
 });

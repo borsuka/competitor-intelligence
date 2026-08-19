@@ -6,7 +6,9 @@ import { FlatCompat } from "@eslint/eslintrc";
 const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
 
 const config = [
-  { ignores: [".next/**", "node_modules/**", "next-env.d.ts"] },
+  // .next-e2e is the end-to-end suite's build output; linting generated bundles
+  // produces thousands of findings about code nobody wrote.
+  { ignores: [".next/**", ".next-e2e/**", "node_modules/**", "next-env.d.ts"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {

@@ -37,7 +37,7 @@ test.describe("Monitoring", () => {
     // --- first crawl: the baseline ---------------------------------------
     await addCompetitor(page, orgId, { name: "Northwind Analytics" });
     await page.getByRole("link", { name: /Northwind Analytics/ }).click();
-    await page.waitForURL(/\/competitors\/[0-9a-f-]{36}/);
+    await page.waitForURL(/\/competitors\/[0-9a-f-]{36}/, { waitUntil: "commit" });
     await waitForAnalysis(page);
 
     // The first analysis establishes the baseline. Reporting every product and page as

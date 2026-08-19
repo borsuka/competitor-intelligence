@@ -128,17 +128,21 @@ export default defineConfig({
       // its module cache under a fast-navigating suite, which produces failures that say
       // nothing about the application. This also means the suite exercises the artefact
       // that is actually deployed.
-      // The .next directory is removed first: NEXT_PUBLIC_API_URL is inlined into the
-      // client bundle at build time, so a stale build points the browser at whatever
-      // API the last build was configured for — and the failure is silent, because only
+      // Built into .next-e2e, never .next: a developer running the suite while their dev
+      // server is up should not have it destroyed underneath them.
+      //
+      // The directory is removed first because NEXT_PUBLIC_API_URL is inlined into the
+      // client bundle at build time, so a stale build points the browser at whatever API
+      // the last build was configured for — and the failure is silent, because only
       // client-side requests are affected while server rendering keeps working.
-      command: `node -e "require('node:fs').rmSync('.next',{recursive:true,force:true})" && npx next build && npx next start --port ${WEB_PORT}`,
+      command: `node -e "require('node:fs').rmSync('.next-e2e',{recursive:true,force:true})" && npx next build && npx next start --port ${WEB_PORT}`,
       url: `${WEB_URL}/login`,
       reuseExistingServer: process.env.E2E_REUSE_SERVERS === "1",
       timeout: 300_000,
       env: {
         NEXT_PUBLIC_API_URL: API_URL,
         API_URL,
+        NEXT_DIST_DIR: ".next-e2e",
       },
       stdout: "ignore",
       stderr: "pipe",

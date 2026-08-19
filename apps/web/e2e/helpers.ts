@@ -31,7 +31,10 @@ export async function registerAndSignIn(page: Page, prefix = "e2e"): Promise<Acc
   await page.getByRole("button", { name: "Create workspace" }).click();
 
   // Registration redirects to /{orgId}; waiting for the URL is what proves it worked.
-  await page.waitForURL(/\/[0-9a-f-]{36}$/, { timeout: 30_000 });
+  // waitUntil "commit" throughout this suite: the default waits for the "load" event,
+  // which a client-side navigation never fires, so the wait can hang on a page that
+  // has already arrived.
+  await page.waitForURL(/\/[0-9a-f-]{36}$/, { waitUntil: "commit", timeout: 30_000 });
   const orgId = new URL(page.url()).pathname.slice(1);
 
   return { email, orgId };

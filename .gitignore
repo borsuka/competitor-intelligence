@@ -51,3 +51,4 @@ storage/
 /playwright-report/
 /blob-report/
 /e2e/.worker.pid
+/apps/web/.next-e2e/

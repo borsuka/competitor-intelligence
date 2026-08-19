@@ -12,6 +12,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,6 +81,20 @@ def validate_website_url(url: str) -> tuple[str, str]:
     if not domain or "." not in domain:
         raise ValidationError("That does not look like a website address.", code="url_invalid")
     return normalized, domain
+
+
+def favicon_url_for(website_url: str) -> str:
+    """Build the favicon URL from the competitor's own origin.
+
+    Scheme and port come from the site itself rather than being assumed to be https on
+    443. Hardcoding https produces a URL the browser cannot load for any competitor served
+    over plain HTTP or on a non-default port — and a broken image in a list is the least
+    of it: the request hangs until the connection times out, so the page never fires its
+    load event.
+    """
+    parsed = urlsplit(website_url)
+    scheme = parsed.scheme or "https"
+    return f"{scheme}://{parsed.netloc}/favicon.ico"
 
 
 def clean_tags(tags: list[str] | None) -> list[str]:
@@ -203,7 +218,7 @@ async def create(
         importance=importance,
         monitoring_interval_hours=interval,
         next_monitor_at=utcnow() + timedelta(hours=interval),
-        favicon_url=f"https://{domain}/favicon.ico",
+        favicon_url=favicon_url_for(normalized_url),
     )
     session.add(competitor)
     await session.flush()

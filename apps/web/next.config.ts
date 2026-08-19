@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // The end-to-end suite builds into its own directory. Sharing .next with a running
+  // dev server corrupts it: the suite wipes and rebuilds, the dev server keeps its module
+  // graph in memory, and the next request fails with "Cannot find module './415.js'" —
+  // which tells the reader nothing about what happened.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // Standalone output only when the Docker build asks for it. It is the right shape for
   // a container — a self-contained server without node_modules — but `next start` refuses
   // to serve it, so making it unconditional means every local production run silently

@@ -18,7 +18,7 @@ test.describe("Competitor lifecycle", () => {
 
     await addCompetitor(page, orgId, { name: "Northwind Analytics" });
     await page.getByRole("link", { name: /Northwind Analytics/ }).click();
-    await page.waitForURL(/\/competitors\/[0-9a-f-]{36}/);
+    await page.waitForURL(/\/competitors\/[0-9a-f-]{36}/, { waitUntil: "commit" });
 
     await waitForAnalysis(page);
 
@@ -110,7 +110,7 @@ test.describe("Competitor lifecycle", () => {
     const { orgId } = await registerAndSignIn(page, "manage");
     await addCompetitor(page, orgId, { name: "Managed Co", analyzeNow: false });
     await page.getByRole("link", { name: /Managed Co/ }).click();
-    await page.waitForURL(/\/competitors\/[0-9a-f-]{36}/);
+    await page.waitForURL(/\/competitors\/[0-9a-f-]{36}/, { waitUntil: "commit" });
 
     // --- edit -------------------------------------------------------------
     await page.getByRole("button", { name: "Edit" }).click();
@@ -122,22 +122,28 @@ test.describe("Competitor lifecycle", () => {
 
     await expect(page.getByRole("heading", { name: "Renamed Co" })).toBeVisible();
     await expect(page.getByText("Analytics")).toBeVisible();
+    // Same reason: the edit reloaded the page, and the next click must land on the new one.
+    await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
 
     // --- archive ----------------------------------------------------------
     await page.getByRole("button", { name: "Archive" }).click();
     await expect(page.getByText("This competitor is archived")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Restore" })).toBeVisible();
 
     await page.goto(`/${orgId}/competitors`);
     await expect(page.getByRole("heading", { name: "No competitors yet" })).toBeVisible();
 
     await page.getByRole("link", { name: "Archived" }).click();
-    await page.waitForURL(/status=archived/);
+    await page.waitForURL(/status=archived/, { waitUntil: "commit" });
     await expect(page.getByRole("link", { name: /Renamed Co/ })).toBeVisible();
 
     // --- restore ----------------------------------------------------------
     await page.getByRole("link", { name: /Renamed Co/ }).click();
     await page.getByRole("button", { name: "Restore" }).click();
     await expect(page.getByText("This competitor is archived")).toBeHidden();
+    // The reload has settled once the button has flipped back to Archive. Clicking
+    // Delete before that races the navigation, and the dialog vanishes with the old page.
+    await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
 
     // --- delete -----------------------------------------------------------
     await page.getByRole("button", { name: "Delete" }).click();
@@ -150,8 +156,14 @@ test.describe("Competitor lifecycle", () => {
     await expect(confirmButton).toBeEnabled();
     await confirmButton.click();
 
-    await page.waitForURL(new RegExp(`/${orgId}/competitors$`));
-    await expect(page.getByRole("heading", { name: "No competitors yet" })).toBeVisible();
+    // Asserted on what the user sees, not on the browser's load event. waitForURL waits
+    // for "load", which a single slow subresource can withhold indefinitely — the page is
+    // usable, the URL is right, and the test hangs anyway. The empty list is the promise
+    // this flow actually makes.
+    await expect(page.getByRole("heading", { name: "No competitors yet" })).toBeVisible({
+      timeout: 30_000,
+    });
+    expect(new URL(page.url()).pathname).toBe(`/${orgId}/competitors`);
   });
 
   test("the dashboard reflects what has been analysed", async ({ page }) => {
