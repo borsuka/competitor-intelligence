@@ -42,3 +42,6 @@ Thumbs.db
 storage/
 *.sqlite3
 *.db
+
+# TypeScript incremental build cache
+*.tsbuildinfo
