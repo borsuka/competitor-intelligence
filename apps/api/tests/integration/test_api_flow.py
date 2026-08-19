@@ -676,6 +676,69 @@ class TestCompetitorManagement:
         assert again.status_code == 201
 
 
+class TestRetention:
+    """Snapshot text is the bulk of the stored bytes and the only thing with a retention
+    policy, so what survives the pass matters as much as what goes."""
+
+    async def test_old_snapshot_text_is_cleared_but_history_survives(
+        self, client, session, cleanup, fake_crawl, offline_urls
+    ):
+        import uuid
+        from datetime import timedelta
+
+        from sqlalchemy import select
+
+        from app.db.base import utcnow
+        from app.db.models.competitor import PageSnapshot
+        from app.services import analysis as analysis_service
+
+        _, org_id = await register(client, email="retention@example.com")
+        created = await client.post(
+            f"/api/v1/orgs/{org_id}/competitors",
+            json={"website_url": "https://retained.test", "name": "Retained", "analyze_now": True},
+        )
+        competitor_id = created.json()["id"]
+        detail = (await client.get(f"/api/v1/orgs/{org_id}/competitors/{competitor_id}")).json()
+        await run_pipeline(session, uuid.UUID(detail["running_job"]["id"]))
+
+        snapshots = (await session.execute(select(PageSnapshot))).scalars().all()
+        assert snapshots
+        assert all(snapshot.text_content for snapshot in snapshots)
+        hashes_before = {snapshot.id: snapshot.text_hash for snapshot in snapshots}
+
+        # Age them past the window.
+        for snapshot in snapshots:
+            snapshot.fetched_at = utcnow() - timedelta(days=200)
+        await session.commit()
+
+        cleared = await analysis_service.prune_snapshot_text(session, older_than_days=90)
+        await session.commit()
+        assert cleared == len(snapshots)
+
+        session.expire_all()
+        after = (await session.execute(select(PageSnapshot))).scalars().all()
+        assert all(snapshot.text_content == "" for snapshot in after)
+        # The hashes are what change detection compares, so they must survive.
+        assert {snapshot.id: snapshot.text_hash for snapshot in after} == hashes_before
+
+        # Even a SELECT holds ACCESS SHARE, and the cleanup fixture's TRUNCATE needs
+        # ACCESS EXCLUSIVE. Leaving the transaction open would deadlock teardown.
+        await session.rollback()
+
+    async def test_recent_snapshots_are_untouched(self, session, cleanup):
+        from app.services import analysis as analysis_service
+
+        # Nothing is old enough, so nothing is cleared — and a zero window disables the
+        # pass entirely rather than clearing everything.
+        assert await analysis_service.prune_snapshot_text(session, older_than_days=90) == 0
+        assert await analysis_service.prune_snapshot_text(session, older_than_days=0) == 0
+
+        # The UPDATE opened a transaction that holds a lock on page_snapshots. Releasing
+        # it matters: the cleanup fixture truncates on another connection and would block
+        # on that lock indefinitely.
+        await session.rollback()
+
+
 class TestHealth:
     async def test_liveness_does_not_touch_dependencies(self, client):
         response = await client.get("/health")

@@ -35,6 +35,7 @@ from app.schemas.auth import (
 )
 from app.schemas.common import MessageResponse
 from app.services import auth as auth_service
+from app.services import email as email_service
 from app.services import organizations as org_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -117,13 +118,23 @@ async def register(
     _set_auth_cookies(response, result.tokens)
     body = await _session_payload(session, result.user)
 
+    email_service.queue(
+        "verification",
+        to=result.user.email,
+        name=result.user.full_name,
+        token=result.verification_token,
+    )
+
     settings = get_settings()
+    # The token is returned only when nothing can deliver it. Once a mail transport is
+    # configured, echoing it in the response would be a second, unnecessary copy of a
+    # credential — and one that ends up in browser history and proxy logs.
+    expose_token = not settings.is_production and not email_service.transport_is_configured()
+
     return RegisterResponse(
         user=body.user,
         organizations=body.organizations,
-        # Outside production there is no mail transport, so the link is returned here to
-        # keep the flow testable. Never exposed in production.
-        verification_token=None if settings.is_production else result.verification_token,
+        verification_token=result.verification_token if expose_token else None,
     )
 
 
@@ -204,13 +215,9 @@ async def request_password_reset(
     result = await auth_service.request_password_reset(session, payload.email)
     await session.commit()
 
-    settings = get_settings()
-    if result is not None and not settings.is_production:
-        _, token = result
-        # Development only: no mail transport is configured, so the token is logged.
-        from app.core.logging import get_logger
-
-        get_logger(__name__).info("auth.password_reset_token_issued", reset_token=token)
+    if result is not None:
+        user, token = result
+        email_service.queue("password_reset", to=user.email, name=user.full_name, token=token)
 
     return MessageResponse(
         message="If an account exists for that address, a reset link has been sent."

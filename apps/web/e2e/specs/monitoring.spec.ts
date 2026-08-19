@@ -6,6 +6,7 @@ import {
   resetFixture,
   setFixturePrice,
   waitForAnalysis,
+  waitForReanalysis,
 } from "../helpers";
 
 /**
@@ -85,10 +86,7 @@ test.describe("Monitoring", () => {
 
     // Nothing about the fixture changes between these two crawls.
     await page.getByRole("button", { name: "Refresh analysis" }).click();
-    await page.waitForTimeout(3_000);
-    await expect(page.getByRole("heading", { name: "Competitive score" })).toBeVisible({
-      timeout: 120_000,
-    });
+    await waitForReanalysis(page);
 
     await page.goto(`/${orgId}/monitoring`);
     // A crawler that reports "the homepage changed" every night trains users to ignore

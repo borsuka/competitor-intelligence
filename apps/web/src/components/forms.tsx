@@ -4,12 +4,11 @@
  * Interactive forms for alerts, reports and settings.
  *
  * Grouped in one module because they share the same shape: a small form, an optimistic
- * disabled state, an inline error from the API, and `router.refresh()` on success so the
- * server components re-render with real data instead of a client-side cache.
+ * disabled state, an inline error from the API, and a page reload on success so the
+ * server components re-render with real data.
  */
 
 import { Loader2, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import {
@@ -47,7 +46,6 @@ const CHANGE_TYPES = [
  * user cannot tell whether their action worked.
  */
 function useSubmit() {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +70,7 @@ function useSubmit() {
     }
   }
 
-  return { busy, error, run, router };
+  return { busy, error, run };
 }
 
 /* -------------------------------------------------------------- alert rules */
@@ -306,7 +304,7 @@ export function GenerateReport({
   competitors: Competitor[];
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const { busy, error, run, router } = useSubmit();
+  const { busy, error, run } = useSubmit();
   const [reportType, setReportType] = useState("weekly_intelligence");
 
   const needsCompetitor = reportType === "competitor_overview";
@@ -326,7 +324,10 @@ export function GenerateReport({
           },
         });
         dialogRef.current?.close();
-        router.push(`/${orgId}/reports/${report.id}`);
+        // location.assign rather than router.push, for the same reason mutations reload:
+        // the client router has not proved dependable here, and a generated report that
+        // never opens looks identical to one that failed to generate.
+        window.location.assign(`/${orgId}/reports/${report.id}`);
       },
       undefined,
       { navigates: true },

@@ -61,6 +61,12 @@ celery_app.conf.beat_schedule = {
         "task": "sentinel.requeue_stuck_jobs",
         "schedule": 30 * 60.0,
     },
+    "prune-snapshot-text": {
+        # Daily is often enough: the window is measured in months, and the pass is a
+        # single indexed UPDATE.
+        "task": "sentinel.prune_snapshot_text",
+        "schedule": 24 * 60 * 60.0,
+    },
 }
 
 

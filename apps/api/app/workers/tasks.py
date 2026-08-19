@@ -119,6 +119,57 @@ async def _run_analysis(job_id: uuid.UUID, task: Task) -> dict[str, Any]:
         }
 
 
+@celery_app.task(
+    bind=True,
+    name="sentinel.send_email",
+    max_retries=3,
+    default_retry_delay=60,
+)
+def send_email_task(self: Task, kind: str, params: dict[str, Any]) -> dict[str, Any]:
+    """Send one transactional email.
+
+    Queued rather than sent inline: an SMTP round trip inside a signup request makes
+    registration as slow and as fragile as the mail server on its worst day.
+
+    Retries are bounded and exponential. A verification link that never arrives leaves a
+    user unable to confirm their account, so it is worth retrying — but not forever, and
+    a permanent failure ends up in the log rather than in a loop.
+    """
+    from app.core.errors import ExternalServiceError
+    from app.services import email as email_service
+
+    builders = {
+        "verification": email_service.verification_email,
+        "password_reset": email_service.password_reset_email,
+        "invitation": email_service.invitation_email,
+        "change_alert": email_service.change_alert_email,
+    }
+    builder = builders.get(kind)
+    if builder is None:
+        log.error("task.email_unknown_kind", kind=kind)
+        return {"sent": False, "reason": "unknown_kind"}
+
+    sender = email_service.build_email_sender()
+    message = builder(**params)
+
+    try:
+        sender.send(message)
+    except ExternalServiceError as exc:
+        if self.request.retries < 3:
+            countdown = min(600, 60 * (2**self.request.retries))
+            log.info(
+                "task.email_retry",
+                kind=kind,
+                attempt=self.request.retries + 1,
+                countdown=countdown,
+            )
+            raise self.retry(exc=exc, countdown=countdown) from exc
+        log.warning("task.email_failed", kind=kind, error_code=exc.code)
+        return {"sent": False, "reason": exc.code}
+
+    return {"sent": sender.delivers, "transport": sender.name}
+
+
 @celery_app.task(name="sentinel.enqueue_due_monitoring")
 def enqueue_due_monitoring_task() -> dict[str, Any]:
     """Scheduler tick: queue refreshes for competitors whose interval has elapsed."""
@@ -154,6 +205,21 @@ async def _cleanup_expired_tokens() -> dict[str, int]:
         await session.commit()
     log.info("task.tokens_cleaned", removed=removed)
     return {"removed": removed}
+
+
+@celery_app.task(name="sentinel.prune_snapshot_text")
+def prune_snapshot_text_task() -> dict[str, int]:
+    """Housekeeping: drop stored page text past the retention window."""
+    return _run(_prune_snapshot_text())
+
+
+async def _prune_snapshot_text() -> dict[str, int]:
+    from app.services import analysis as analysis_service
+
+    async with session_scope() as session:
+        cleared = await analysis_service.prune_snapshot_text(session)
+        await session.commit()
+    return {"cleared": cleared}
 
 
 @celery_app.task(name="sentinel.requeue_stuck_jobs")

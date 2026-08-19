@@ -111,4 +111,8 @@ async def cleanup(engine):
 
     tables = ", ".join(f'"{table}"' for table in reversed(Base.metadata.sorted_tables))
     async with engine.begin() as connection:
+        # TRUNCATE needs ACCESS EXCLUSIVE, so a test that left a transaction open on the
+        # shared session would block here forever. A timeout turns that into a legible
+        # failure instead of a run that never finishes.
+        await connection.execute(text("SET lock_timeout = '10s'"))
         await connection.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))

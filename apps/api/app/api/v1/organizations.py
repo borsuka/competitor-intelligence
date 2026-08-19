@@ -22,6 +22,7 @@ from app.schemas.competitor import (
     RoleUpdate,
     UsageResponse,
 )
+from app.services import email as email_service
 from app.services import organizations as org_service
 
 router = APIRouter(prefix="/orgs", tags=["organizations"])
@@ -80,16 +81,28 @@ async def invite_member(
     invitation, token = await org_service.invite_member(
         session, scope, email=payload.email, role=payload.role
     )
+    organization = await session.get(Organization, scope.organization_id)
+    inviter = await session.get(User, scope.user_id)
     await session.commit()
 
+    email_service.queue(
+        "invitation",
+        to=invitation.email,
+        organization_name=organization.name if organization else "a workspace",
+        inviter_name=inviter.full_name if inviter else None,
+        token=token,
+    )
+
     settings = get_settings()
+    # Same rule as the verification token: shown only when nothing can deliver it.
+    expose_token = not settings.is_production and not email_service.transport_is_configured()
+
     return InviteResponse(
         id=invitation.id,
         email=invitation.email,
         role=invitation.role,
         expires_at=invitation.expires_at,
-        # Development only, for the same reason as the email verification token.
-        invite_token=None if settings.is_production else token,
+        invite_token=token if expose_token else None,
     )
 
 

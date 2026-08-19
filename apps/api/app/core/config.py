@@ -120,6 +120,10 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------ monitoring
     monitoring_default_interval_hours: int = 24
     monitoring_batch_size: int = 50
+    # page_snapshots grows fastest of any table, holding page text per page per crawl.
+    # Past this age the text is cleared but the row stays: change detection compares
+    # hashes, so history keeps working while the bulk goes away. 0 disables it.
+    snapshot_text_retention_days: int = 90
 
     smtp_host: str | None = None
     smtp_port: int = 587

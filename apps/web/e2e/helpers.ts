@@ -110,3 +110,19 @@ export async function waitForAnalysis(page: Page, timeout = 120_000): Promise<vo
     timeout,
   });
 }
+
+
+/**
+ * Waits for a re-analysis triggered from the detail page to finish.
+ *
+ * Watching for the score card is not enough on a competitor that has been analysed
+ * before: the card is already on screen, so the assertion passes immediately and the next
+ * navigation races the reload the progress panel fires on completion. The refresh button
+ * is disabled for exactly as long as a job is running, which is the signal that means
+ * what it says.
+ */
+export async function waitForReanalysis(page: Page, timeout = 120_000): Promise<void> {
+  const button = page.getByRole("button", { name: "Refresh analysis" });
+  await expect(button).toBeDisabled({ timeout: 30_000 });
+  await expect(button).toBeEnabled({ timeout });
+}

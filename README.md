@@ -22,9 +22,10 @@ one. A dimension with no supporting data reads "Insufficient data", never zero.
 | **Monitor** | Scheduled re-crawls, structured diffing, severity from magnitude — a 20% price rise, not a changed timestamp |
 | **Alert** | Rules per competitor and change type, in-app notifications, webhook and email behind an interface |
 | **Report** | Structured documents built from stored data: weekly intelligence, competitor overview, comparison |
+| **Email** | Verification, password reset, invitations and change alerts over SMTP, queued through the worker |
 
 Not implemented, and said so plainly: billing, review-data ingestion, ad intelligence,
-PDF export, SMTP delivery. See [docs/architecture.md](docs/architecture.md#not-implemented).
+PDF export. See [docs/architecture.md](docs/architecture.md#not-implemented).
 
 ---
 
@@ -157,7 +158,16 @@ Three layers, each testing something the others cannot:
 
 ---
 
+## Security
+
+Report vulnerabilities privately — see [SECURITY.md](SECURITY.md). The threat model and
+the controls are documented in [docs/security.md](docs/security.md), including the known
+limitations.
+
+---
+
 ## Licence
 
 No licence has been chosen yet, so all rights are reserved by default. Add one before
-sharing this publicly.
+sharing this publicly — it is a decision about how other people may use the work, which is
+not a decision to make on your behalf.

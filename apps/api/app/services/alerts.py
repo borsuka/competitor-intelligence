@@ -28,6 +28,7 @@ from app.db.models.enums import (
 from app.db.models.enums import (
     NotificationChannel as Channel,
 )
+from app.db.models.identity import Membership, User
 from app.db.models.monitoring import AlertRule, Change, Notification
 from app.scraping.urls import assert_safe_url
 from app.services import audit
@@ -51,28 +52,38 @@ class InAppSender:
         notification.sent_at = utcnow()
 
 
-class ConsoleEmailSender:
-    """Development email channel.
+class EmailNotificationSender:
+    """Emails the change to every member of the organization.
 
-    Logs the message instead of sending it.  Explicitly not a silent no-op: the
-    notification is marked ``sent`` only because it genuinely reached its configured
-    destination, which in development is the log.  Configure SMTP to deliver for real.
+    Queued through the worker rather than sent inline, so a slow mail server cannot
+    stretch out an analysis. Without SMTP configured the message is logged instead, and
+    the notification is marked ``sent`` because it did reach its configured destination —
+    which in development is the log.
     """
 
     channel = Channel.EMAIL
 
+    def __init__(self, recipients: list[str], competitor_name: str) -> None:
+        self._recipients = recipients
+        self._competitor = competitor_name
+
     async def send(self, notification: Notification) -> None:
-        settings = get_settings()
-        if settings.smtp_host:
-            raise NotImplementedError(
-                "SMTP delivery is configured but not implemented; "
-                "wire an SMTP client into ConsoleEmailSender before enabling it."
+        from app.services import email as email_service
+
+        if not self._recipients:
+            notification.status = NotificationStatus.FAILED
+            notification.error_message = "No member has an email address."
+            return
+
+        for recipient in self._recipients:
+            email_service.queue(
+                "change_alert",
+                to=recipient,
+                title=notification.title,
+                body=notification.body,
+                competitor=self._competitor,
             )
-        log.info(
-            "notification.email.console",
-            title=notification.title,
-            organization_id=str(notification.organization_id),
-        )
+
         notification.status = NotificationStatus.SENT
         notification.sent_at = utcnow()
 
@@ -265,6 +276,16 @@ async def dispatch_for_changes(
     if not rules:
         return []
 
+    # Loaded once: a burst of changes should not become a query per notification.
+    recipients: list[str] = []
+    if any(Channel.EMAIL.value in rule.channels for rule in rules):
+        members = await session.execute(
+            select(User.email)
+            .join(Membership, Membership.user_id == User.id)
+            .where(Membership.organization_id == competitor.organization_id)
+        )
+        recipients = [email for email in members.scalars().all() if email]
+
     created: list[Notification] = []
     now = utcnow()
 
@@ -300,7 +321,7 @@ async def dispatch_for_changes(
 
     for notification in created:
         rule = next((r for r in rules if r.id == notification.alert_rule_id), None)
-        sender = _sender_for(notification.channel, rule)
+        sender = _sender_for(notification.channel, rule, recipients, competitor.name)
         notification.attempts += 1
         try:
             await sender.send(notification)
@@ -317,9 +338,14 @@ async def dispatch_for_changes(
     return created
 
 
-def _sender_for(channel: Channel, rule: AlertRule | None) -> NotificationSender:
+def _sender_for(
+    channel: Channel,
+    rule: AlertRule | None,
+    recipients: list[str] | None = None,
+    competitor_name: str = "",
+) -> NotificationSender:
     if channel is Channel.EMAIL:
-        return ConsoleEmailSender()
+        return EmailNotificationSender(recipients or [], competitor_name)
     if channel is Channel.WEBHOOK and rule is not None and rule.webhook_url:
         return WebhookSender(rule.webhook_url)
     return InAppSender()
@@ -394,7 +420,7 @@ async def acknowledge_change(
 
 
 __all__ = [
-    "ConsoleEmailSender",
+    "EmailNotificationSender",
     "InAppSender",
     "WebhookSender",
     "acknowledge_change",

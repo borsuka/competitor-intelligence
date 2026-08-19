@@ -36,6 +36,8 @@ that follows it.
 [ ] CREATE EXTENSION vector; run once on the managed database
 [ ] alembic upgrade head
 [ ] TLS terminated in front of the API, with the proxy overwriting X-Forwarded-For
+[ ] SMTP_HOST configured, or accept that verification and reset links go nowhere
+[ ] PUBLIC_WEB_URL set to the real origin, since it builds every link in every email
 ```
 
 `Settings.validate_production` refuses to start if the first five are wrong. That is
@@ -58,6 +60,8 @@ in production:
 | `ANTHROPIC_API_KEY` | Without it the app runs the labelled development provider. |
 | `CORS_ORIGINS` | Exact origins, comma separated. |
 | `COOKIE_DOMAIN` | Set when the API and web app share a parent domain. |
+| `SMTP_HOST` | Without it, verification and reset links are logged rather than sent. |
+| `PUBLIC_WEB_URL` | The origin used to build links in emails. Wrong here means dead links. |
 
 ---
 
@@ -109,9 +113,10 @@ per domain. Concurrency 2–4 per container. Watch queue depth on the `analysis`
 **Redis** — set `maxmemory-policy allkeys-lru`. It holds the broker, the cache and rate
 limit counters; an unbounded cache is an outage waiting for a busy week.
 
-**PostgreSQL** — `page_snapshots` grows fastest, holding page text per fetch. Plan a
-retention policy: keep snapshot rows but drop `text_content` beyond 90 days, which keeps
-change detection working (it compares hashes) while removing most of the volume.
+**PostgreSQL** — `page_snapshots` grows fastest, holding page text per fetch. A daily
+scheduled pass clears `text_content` beyond `SNAPSHOT_TEXT_RETENTION_DAYS` (90 by default)
+while keeping the rows, so change detection — which compares hashes — keeps working while
+most of the volume goes away. Set it to 0 to keep everything.
 
 ---
 

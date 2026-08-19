@@ -10,7 +10,6 @@
  */
 
 import { Archive, Loader2, Settings2, Trash2, Undo2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import {
@@ -25,7 +24,6 @@ import { ApiClientError, api, clientFetch } from "@/lib/api";
 import type { Competitor } from "@/lib/types";
 
 function useMutation() {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +50,7 @@ function useMutation() {
     }
   }
 
-  return { busy, error, run, router };
+  return { busy, error, run };
 }
 
 export function CompetitorSettings({
@@ -232,7 +230,7 @@ export function DeleteCompetitorButton({
   competitor: Competitor;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const { busy, error, run, router } = useMutation();
+  const { busy, error, run } = useMutation();
   const [confirmation, setConfirmation] = useState("");
 
   // Typing the name is not ceremony: it is the difference between a slip and a decision,
@@ -303,7 +301,8 @@ export function DeleteCompetitorButton({
                   }),
                 () => {
                   dialogRef.current?.close();
-                  router.push(`/${orgId}/competitors`);
+                  // Same reasoning as the report navigation in forms.tsx.
+                  window.location.assign(`/${orgId}/competitors`);
                 },
                 { navigates: true },
               )

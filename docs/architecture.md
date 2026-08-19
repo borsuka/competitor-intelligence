@@ -144,6 +144,12 @@ a tenant filter never depends on a join being present.
 Soft deletion (`deleted_at`) applies only to `competitors` and `organizations` — the
 two things a user can destroy by accident. Everything else cascades.
 
+`page_snapshots` is the only table with a retention policy. Past
+`SNAPSHOT_TEXT_RETENTION_DAYS` (90 by default) a scheduled pass clears `text_content`
+while keeping the row: change detection compares `text_hash`, so history and every
+previously detected diff survive, and what goes is the overwhelming majority of the
+bytes.
+
 Indexes follow real query patterns: `(organization_id, status, created_at desc)` on
 competitors, `(competitor_id, detected_at desc)` on changes, `(page_id, fetched_at
 desc)` on snapshots, plus an IVFFlat index on `embeddings.embedding`.
@@ -410,5 +416,9 @@ Stated plainly, so these docs describe reality:
 * **PDF export.** Reports are stored as structured documents rather than rendered HTML,
   specifically so a renderer can be added later without regenerating them. **No renderer
   and no export endpoint exist.**
-* **Email delivery.** Notifications are persisted and rendered in-app; the SMTP channel
-  sits behind an interface with a console implementation for development.
+* **Email delivery** is implemented. Verification, password reset, invitations and
+  change alerts are sent through SMTP when `SMTP_HOST` is configured, queued through the
+  worker so a slow mail server cannot stretch out a signup. Without SMTP the message is
+  logged instead and the sender reports `delivers = False`, which is what lets the API
+  decide whether returning a token in the response is a development affordance or a
+  second copy of a credential.

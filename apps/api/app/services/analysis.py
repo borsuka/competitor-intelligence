@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.prompts import PROMPT_VERSIONS
 from app.ai.schemas import ExtractionResult, PositioningResult
 from app.ai.service import AIService
+from app.core.config import get_settings
 from app.core.errors import AppError, NotFoundError, QuotaExceededError
 from app.core.logging import bind_context, get_logger
 from app.core.tenancy import Role, TenantScope
@@ -1096,3 +1097,30 @@ __all__ = [
     "refresh_due_competitors",
     "run_analysis",
 ]
+
+
+async def prune_snapshot_text(session: AsyncSession, *, older_than_days: int | None = None) -> int:
+    """Clear page text from snapshots past the retention window.
+
+    The rows stay. Change detection compares ``text_hash``, which is kept, so competitor
+    history and every previously detected diff remain intact — what goes is the stored
+    page body, which is the overwhelming majority of the bytes and is only needed while a
+    snapshot is recent enough to re-analyse.
+
+    Returns the number of snapshots cleared.
+    """
+    settings = get_settings()
+    days = older_than_days if older_than_days is not None else settings.snapshot_text_retention_days
+    if days <= 0:
+        return 0
+
+    cutoff = utcnow() - timedelta(days=days)
+    result = await session.execute(
+        update(PageSnapshot)
+        .where(PageSnapshot.fetched_at < cutoff, PageSnapshot.text_content != "")
+        .values(text_content="")
+    )
+    cleared = int(result.rowcount or 0)
+    if cleared:
+        log.info("analysis.snapshot_text_pruned", cleared=cleared, older_than_days=days)
+    return cleared
