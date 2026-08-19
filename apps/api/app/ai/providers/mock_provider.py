@@ -114,10 +114,22 @@ class MockProvider:
         headings: list[str] = context.get("headings", [])
         company = context.get("company_name", "This company")
 
+        # Only prices on a pricing page can be a pricing tier, and only ones this can
+        # actually name. A number it cannot name is a number, not a plan — inventing
+        # "Plan 5" for it would dress a raw observation up as structured intelligence,
+        # which is the one thing this provider must never do.
+        candidates = [
+            price for price in observed_prices if price.get("page_type") in (None, "pricing")
+        ]
+
         plans: list[ExtractedPricingPlan] = []
         seen_plans: set[str] = set()
-        for price in observed_prices[:8]:
-            label = self._plan_label(price) or f"Plan {len(plans) + 1}"
+        unnamed = 0
+        for price in candidates[:12]:
+            label = self._plan_label(price)
+            if label is None:
+                unnamed += 1
+                continue
             if label.lower() in seen_plans:
                 continue
             seen_plans.add(label.lower())
@@ -152,8 +164,8 @@ class MockProvider:
             products=products[:6],
             pricing_plans=plans,
             key_features=[h for h in headings[6:20] if 3 < len(h) < 120][:12],
-            pricing_model_notes=(
-                None if plans else "No prices were observed on the crawled pages."
+            pricing_model_notes=_pricing_note(
+                plans=len(plans), unnamed=unnamed, observed=len(observed_prices)
             ),
             confidence=0.3 if plans or products else 0.1,
         )
@@ -306,3 +318,23 @@ def deterministic_seed(text: str) -> int:
 
 
 __all__ = ["MOCK_MODEL", "MockProvider", "deterministic_seed"]
+
+
+def _pricing_note(*, plans: int, unnamed: int, observed: int) -> str | None:
+    """Explain what happened to the prices, when the answer is not obvious.
+
+    A blank pricing section invites the reader to assume the crawl failed. Saying that 47
+    prices were seen but none of them looked like a plan is both true and useful — it
+    usually means the competitor sells products rather than subscriptions.
+    """
+    if plans and not unnamed:
+        return None
+    if observed == 0:
+        return "No prices were found on the crawled pages."
+    if plans == 0:
+        return (
+            f"{observed} price(s) were found on this site, but none of them sits next to "
+            "a recognisable plan name. That usually means the prices belong to products "
+            "rather than to subscription tiers. Configure an AI provider to interpret them."
+        )
+    return f"{unnamed} further price(s) were found that could not be matched to a named plan."

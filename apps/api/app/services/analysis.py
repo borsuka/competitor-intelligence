@@ -367,8 +367,13 @@ async def _execute(
         tokens_in=extraction.tokens_in + positioning.tokens_in,
         tokens_out=extraction.tokens_out + positioning.tokens_out,
         duration_ms=extraction.duration_ms + positioning.duration_ms,
-        # User-visible: these explain why a plan shows no price.
-        data_notes=pricing_notes,
+        # User-visible: why a plan shows no price, and what became of any prices that
+        # were found but could not be matched to a plan.
+        data_notes=(
+            [*pricing_notes, extraction.data.pricing_model_notes]
+            if extraction.data.pricing_model_notes
+            else pricing_notes
+        ),
     )
     session.add(analysis)
     await session.flush()
@@ -976,11 +981,27 @@ def _pages_payload(crawl: CrawlResult) -> list[dict[str, Any]]:
 
 
 def _observed_prices(crawl: CrawlResult) -> list[dict[str, Any]]:
-    prices: list[dict[str, Any]] = []
+    """Prices the parser found, tagged with the kind of page they came from.
+
+    When a pricing page was crawled, only its prices are offered. Everything else is
+    noise dressed as signal: a shop's homepage is covered in product prices, an about
+    page mentions "$1", and a changelog quotes old figures. Feeding those to the
+    extraction stage produces a table of plans a competitor does not have.
+    """
+    by_page: list[dict[str, Any]] = []
     for page in crawl.pages:
         for price in page.extracted.detected_prices:
-            prices.append({**price, "source_url": page.url})
-    return prices[:60]
+            by_page.append({**price, "source_url": page.url, "page_type": page.page_type.value})
+
+    from_pricing_pages = [
+        price for price in by_page if price["page_type"] == PageType.PRICING.value
+    ]
+    if from_pricing_pages:
+        return from_pricing_pages[:60]
+
+    # No pricing page. The prices are still reported so the model can see them and say
+    # what they are, but nothing here should be read as a pricing tier.
+    return by_page[:60]
 
 
 def _external_links(crawl: CrawlResult) -> list[str]:

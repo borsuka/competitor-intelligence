@@ -232,8 +232,13 @@ export default async function CompetitorDetailPage({
                 {pricing.length === 0 ? (
                   <EmptyState
                     icon={<TagIcon className="size-5" aria-hidden />}
-                    title="No pricing detected"
-                    description="This competitor may not publish prices, or the pricing page was not reachable."
+                    title="No pricing plans identified"
+                    description={
+                      // The notes explain what became of any prices that were found, so a
+                      // blank section does not read as a failed crawl.
+                      analysis.data_notes[0] ??
+                      "This competitor may not publish plan pricing, or the pricing page was not reachable."
+                    }
                   />
                 ) : (
                   <Table caption={`Pricing plans for ${competitor.name}`}>
