@@ -36,18 +36,33 @@ const CHANGE_TYPES = [
   { value: "content_changed", label: "Content changed" },
 ] as const;
 
+/**
+ * Shared mutation handling.
+ *
+ * Successful mutations reload the page rather than calling `router.refresh()`. That is a
+ * blunter instrument than it should need to be, and the reason is empirical: refresh
+ * proved unreliable here — a paused alert kept rendering as paused, a read notification
+ * kept counting as unread, a finished analysis kept saying "Not scored". A mutation that
+ * silently leaves the old state on screen is worse than a page that flashes, because the
+ * user cannot tell whether their action worked.
+ */
 function useSubmit() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(action: () => Promise<unknown>, onDone?: () => void) {
+  /** ``navigates`` skips the reload for actions that route somewhere else instead. */
+  async function run(
+    action: () => Promise<unknown>,
+    onDone?: () => void,
+    { navigates = false }: { navigates?: boolean } = {},
+  ) {
     setBusy(true);
     setError(null);
     try {
       await action();
       onDone?.();
-      router.refresh();
+      if (!navigates) window.location.reload();
     } catch (caught) {
       setError(
         caught instanceof ApiClientError ? caught.displayMessage : "Something went wrong.",
@@ -313,6 +328,8 @@ export function GenerateReport({
         dialogRef.current?.close();
         router.push(`/${orgId}/reports/${report.id}`);
       },
+      undefined,
+      { navigates: true },
     );
   }
 

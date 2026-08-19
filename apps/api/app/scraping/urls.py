@@ -149,12 +149,17 @@ def assert_safe_url(url: str) -> ResolvedTarget:
         raise UnsafeURLError("The URL has no hostname.", code="missing_hostname")
 
     port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)
-    if port not in ALLOWED_PORTS:
+    # The test escape hatch relaxes the port rule as well as the address rules: an
+    # end-to-end fixture site cannot bind port 80 on a developer machine or in CI.
+    # Production startup refuses the flag outright, so this cannot widen a real deployment.
+    if port not in ALLOWED_PORTS and not settings.scraper_allow_private_networks:
         raise UnsafeURLError(
             "Only the standard http and https ports can be fetched.", code="port_not_allowed"
         )
 
-    if hostname in BLOCKED_HOSTNAMES or hostname.endswith(BLOCKED_HOST_SUFFIXES):
+    if not settings.scraper_allow_private_networks and (
+        hostname in BLOCKED_HOSTNAMES or hostname.endswith(BLOCKED_HOST_SUFFIXES)
+    ):
         raise UnsafeURLError("That host cannot be fetched.", code="host_not_allowed")
 
     # A bare IP literal is checked directly; there is nothing to resolve.
@@ -164,8 +169,9 @@ def assert_safe_url(url: str) -> ResolvedTarget:
         literal = None
 
     if settings.scraper_allow_private_networks:
-        # Test-only. Refused in production by Settings.validate_production.
-        addresses = (hostname,) if literal else _resolve_all(hostname, port)
+        # Test-only, and the only branch that skips the address checks entirely.
+        # Settings.validate_production refuses to boot production with this enabled.
+        addresses = (str(literal),) if literal else _resolve_all(hostname, port)
         return ResolvedTarget(url=url, hostname=hostname, port=port, ip_addresses=addresses)
 
     if literal is not None:

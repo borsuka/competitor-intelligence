@@ -19,6 +19,8 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
+# Asks next.config.ts for the self-contained server bundle; see the comment there.
+ENV NEXT_OUTPUT=standalone
 
 RUN npm run build
 

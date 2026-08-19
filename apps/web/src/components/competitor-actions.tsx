@@ -202,7 +202,6 @@ export function AnalyzeButton({
   competitorId: string;
   disabled?: boolean;
 }) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -214,7 +213,10 @@ export function AnalyzeButton({
         method: "POST",
         body: { depth: "standard" },
       });
-      router.refresh();
+      // A reload, for the same reason the progress panel reloads on completion: this has
+      // to bring the running job into the page, and if it silently does not, nothing
+      // mounts to poll for the result and the user watches a page that never changes.
+      window.location.reload();
     } catch (caught) {
       setError(
         caught instanceof ApiClientError
@@ -255,26 +257,40 @@ export function JobProgress({
   orgId: string;
   job: Job;
 }) {
-  const router = useRouter();
   const [current, setCurrent] = useState(job);
+  const [unreachable, setUnreachable] = useState(false);
 
   useEffect(() => {
     if (current.status !== "pending" && current.status !== "running") return;
 
     let cancelled = false;
     let attempts = 0;
+    let consecutiveFailures = 0;
 
     const tick = async () => {
       try {
         const updated = await clientFetch<Job>(api.org(orgId).job(current.id));
         if (cancelled) return;
+        consecutiveFailures = 0;
+        setUnreachable(false);
         setCurrent(updated);
         if (updated.status === "completed" || updated.status === "failed") {
-          router.refresh();
+          // A full reload rather than router.refresh(). When an analysis finishes, every
+          // panel on this page changes — score, pricing, products, changes — and a
+          // reload is the one mechanism guaranteed to show all of it. router.refresh()
+          // proved unreliable here: the job reached "completed" and the page kept
+          // rendering "Not scored", which is the worst possible outcome for the screen a
+          // user is watching. One reload at the end of a multi-minute job is not a cost
+          // worth trading correctness for.
+          window.location.reload();
           return;
         }
       } catch {
-        // A transient failure should not stop the poll; the next tick tries again.
+        // One failed poll is a hiccup; five in a row means the browser cannot reach the
+        // API at all. Saying so beats a progress bar that never moves, which is
+        // indistinguishable from a job that never finishes.
+        consecutiveFailures += 1;
+        if (!cancelled && consecutiveFailures >= 5) setUnreachable(true);
       }
       attempts += 1;
       if (!cancelled) {
@@ -288,9 +304,17 @@ export function JobProgress({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [current.id, current.status, orgId, router]);
+  }, [current.id, current.status, orgId]);
 
   if (current.status === "completed") return null;
+
+  if (unreachable) {
+    return (
+      <Callout tone="warning" title="Cannot reach the server for progress updates">
+        The analysis is probably still running. Reload the page to see where it got to.
+      </Callout>
+    );
+  }
 
   if (current.status === "failed") {
     return (

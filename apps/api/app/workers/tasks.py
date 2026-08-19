@@ -21,7 +21,7 @@ from celery import Task
 from app.core.errors import AppError, QuotaExceededError
 from app.core.logging import bind_context, clear_context, get_logger
 from app.db.base import utcnow
-from app.db.session import session_scope
+from app.db.session import dispose_engine, session_scope
 from app.workers.celery_app import celery_app
 
 log = get_logger(__name__)
@@ -41,7 +41,24 @@ RETRYABLE_ERROR_CODES = frozenset(
 
 
 def _run(coro) -> Any:
-    return asyncio.run(coro)
+    """Run a coroutine and leave no connection behind.
+
+    A worker process handles many tasks in sequence, and ``asyncio.run`` creates a fresh
+    event loop for each one. The SQLAlchemy engine is cached process-wide, so without
+    this the second task would inherit a pool of connections created in the *first*
+    task's loop and fail with "got Future attached to a different loop".
+
+    Disposing inside the same loop that created the connections is what makes the engine
+    safe to re-create on the next task.
+    """
+
+    async def runner() -> Any:
+        try:
+            return await coro
+        finally:
+            await dispose_engine()
+
+    return asyncio.run(runner())
 
 
 @celery_app.task(

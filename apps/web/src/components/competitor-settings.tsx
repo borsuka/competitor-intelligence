@@ -29,13 +29,20 @@ function useMutation() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(action: () => Promise<unknown>, after?: () => void) {
+  /** ``navigates`` skips the reload for actions that route somewhere else instead. */
+  async function run(
+    action: () => Promise<unknown>,
+    after?: () => void,
+    { navigates = false }: { navigates?: boolean } = {},
+  ) {
     setBusy(true);
     setError(null);
     try {
       await action();
       after?.();
-      router.refresh();
+      // See the note in forms.tsx: router.refresh() left stale state on screen often
+      // enough that a mutation could not be trusted to show its own result.
+      if (!navigates) window.location.reload();
     } catch (caught) {
       setError(
         caught instanceof ApiClientError ? caught.displayMessage : "Something went wrong.",
@@ -298,6 +305,7 @@ export function DeleteCompetitorButton({
                   dialogRef.current?.close();
                   router.push(`/${orgId}/competitors`);
                 },
+                { navigates: true },
               )
             }
           >

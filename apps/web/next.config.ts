@@ -3,13 +3,18 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Docker builds run `next start` from a standalone bundle rather than shipping
-  // node_modules into the runtime image.
-  output: "standalone",
+  // Standalone output only when the Docker build asks for it. It is the right shape for
+  // a container — a self-contained server without node_modules — but `next start` refuses
+  // to serve it, so making it unconditional means every local production run silently
+  // serves the wrong thing.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   // typedRoutes is off: every route here is built from a runtime organization id and
   // query parameters, so it would require casting almost every href to Route — which
   // removes the checking it exists to provide.
   typedRoutes: false,
+  // The end-to-end suite drives the dev server over 127.0.0.1 while it serves assets
+  // from localhost; without this Next warns on every request.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   images: {
     // Competitor favicons come from arbitrary domains, so remote images are proxied
     // through Next's optimiser rather than embedded directly.

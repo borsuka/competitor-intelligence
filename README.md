@@ -125,10 +125,21 @@ ruff check . && ruff format --check .
 ```bash
 cd apps/web
 npm run typecheck && npm run lint && npm run build
+
+npx playwright install chromium   # once
+npm run e2e
 ```
 
-Integration tests cover the paths that must never regress: tenant isolation, CSRF, quota
-enforcement, and the full crawl → analyse → score → diff → alert pipeline.
+Three layers, each testing something the others cannot:
+
+* **Unit** — pure logic with no dependencies: the SSRF guard, scoring, change detection,
+  price parsing, prompt sanitising.
+* **Integration** — the API against a real PostgreSQL: tenant isolation, CSRF, quota
+  enforcement, and the full crawl → analyse → score → diff → alert pipeline.
+* **End to end** — a browser against the real stack, including a live Celery worker and a
+  fixture website the real crawler crawls over HTTP. Registration, sign-in, adding a
+  competitor, waiting for the analysis, reading the result, comparing, detecting a price
+  change and receiving the alert.
 
 ---
 

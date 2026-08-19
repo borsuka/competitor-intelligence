@@ -134,3 +134,37 @@ class TestDomains:
 )
 def test_binary_prefilter(url: str, expected: bool) -> None:
     assert is_probably_binary(url) is expected
+
+
+class TestEscapeHatch:
+    """`SCRAPER_ALLOW_PRIVATE_NETWORKS` exists so end-to-end tests can crawl a fixture
+    site on localhost. It is the one switch that disables the guard, so its blast radius
+    is worth pinning down."""
+
+    def test_disabled_by_default(self, settings) -> None:
+        assert settings.scraper_allow_private_networks is False
+
+    def test_when_enabled_it_permits_localhost_and_odd_ports(self, monkeypatch) -> None:
+        from app.core.config import get_settings
+
+        monkeypatch.setenv("SCRAPER_ALLOW_PRIVATE_NETWORKS", "true")
+        get_settings.cache_clear()
+
+        target = assert_safe_url("http://127.0.0.1:4319/")
+        assert target.port == 4319
+
+    def test_production_refuses_to_start_with_it_enabled(self, monkeypatch) -> None:
+        """The guarantee that makes the flag safe to have at all."""
+        import pytest as _pytest
+
+        from app.core.config import Settings
+
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("SECRET_KEY", "a" * 48)
+        monkeypatch.setenv("COOKIE_SECURE", "true")
+        monkeypatch.setenv("DEBUG", "false")
+        monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@db.internal:5432/x")
+        monkeypatch.setenv("SCRAPER_ALLOW_PRIVATE_NETWORKS", "true")
+
+        with _pytest.raises(ValueError, match="SCRAPER_ALLOW_PRIVATE_NETWORKS"):
+            Settings()

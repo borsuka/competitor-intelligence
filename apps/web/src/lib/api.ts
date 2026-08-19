@@ -95,6 +95,15 @@ async function toError(response: Response): Promise<ApiClientError> {
   return new ApiClientError(response.status, code, message, details, requestId);
 }
 
+/** Connection-level failures worth one retry: the request never reached the server. */
+function isTransientConnectionError(error: unknown): boolean {
+  const cause = (error as { cause?: { code?: string } } | undefined)?.cause;
+  const code = cause?.code ?? (error as { code?: string } | undefined)?.code;
+  return ["ECONNRESET", "ECONNREFUSED", "EPIPE", "ETIMEDOUT", "UND_ERR_SOCKET"].includes(
+    String(code),
+  );
+}
+
 interface FetchOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
   /** Opt in to Next's data cache. Off by default: everything here is tenant data. */
@@ -114,14 +123,29 @@ async function request<T>(
   if (body !== undefined) headers.set("Content-Type", "application/json");
   for (const [key, value] of Object.entries(extraHeaders)) headers.set(key, value);
 
-  const response = await fetch(`${baseUrl}${path}`, {
+  const requestInit: RequestInit = {
     ...init,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     ...(revalidate === undefined
       ? { cache: "no-store" as const }
       : { next: { revalidate } }),
-  });
+  };
+
+  const method = (init.method ?? "GET").toUpperCase();
+  const isIdempotent = ["GET", "HEAD", "OPTIONS"].includes(method);
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, requestInit);
+  } catch (error) {
+    // Node keeps HTTP connections alive longer than uvicorn does, so the first request
+    // after an idle gap can land on a socket the server has already closed. Retrying a
+    // safe method once turns a 500 page into a hiccup; anything with side effects is
+    // rethrown, because a retried POST could duplicate the work it did.
+    if (!isIdempotent || !isTransientConnectionError(error)) throw error;
+    response = await fetch(`${baseUrl}${path}`, requestInit);
+  }
 
   if (!response.ok) throw await toError(response);
   if (response.status === 204) return undefined as T;

@@ -84,14 +84,18 @@ npm run dev
 
 ## Windows notes
 
-* Celery's prefork pool does not work on Windows. Use `--pool=solo`:
+* Celery's prefork pool does not work on Windows. Use `--pool=threads`:
 
   ```bash
-  celery -A app.workers.celery_app.celery_app worker --pool=solo -Q analysis,default
+  celery -A app.workers.celery_app.celery_app worker --pool=threads -Q analysis,default
   ```
 
+  Not `--pool=solo`: combined with `task_acks_late`, the solo pool holds a prefetched task
+  while idle, so every other job sits in the queue unexecuted. That looks exactly like a
+  broken product and costs an hour to diagnose.
+
   This is a Windows development limitation only; the Docker worker runs on Linux with the
-  normal pool.
+  normal prefork pool.
 
 * Use `.venv\Scripts\python` rather than `.venv/bin/python`.
 
@@ -187,6 +191,51 @@ cd apps/web
 npm run typecheck
 npm run lint
 npm run build
+```
+
+### End to end
+
+```bash
+docker compose up -d postgres redis
+cd apps/web
+npx playwright install chromium      # once
+npm run e2e
+```
+
+The suite runs against the **real stack**: PostgreSQL, Redis, the FastAPI service, a live
+Celery worker, a production build of the frontend, and a fixture website that the real
+crawler actually crawls over HTTP. The only thing standing in for the internet is that
+fixture site, served from `e2e/fixtures/competitor-site.mjs`.
+
+That choice is deliberate. A suite that stubs the API proves the UI renders; it proves
+nothing about whether adding a competitor produces an analysis. This one walks the path a
+customer walks — including the hop through Redis to the worker, which is the part most
+likely to break in production.
+
+It manages its own environment: global setup drops and re-migrates a dedicated
+`sentinel_e2e` database (from migrations, so a broken chain fails here rather than in
+production) and starts the worker; teardown stops it.
+
+A few practicalities:
+
+* It runs against `next build` output, not `next dev`. The dev server recompiles per route
+  and drops its module cache under a fast-navigating suite, which produces failures that
+  say nothing about the application.
+* Tests run sequentially. They share one database and one fixture site whose pricing some
+  tests mutate, so parallelism would make results order-dependent.
+* `SCRAPER_ALLOW_PRIVATE_NETWORKS=true` is set for the run so the crawler can reach the
+  fixture on localhost. That is the flag's stated purpose, and production startup refuses
+  to boot with it enabled.
+* `E2E_REUSE_SERVERS=1` attaches to an API you started yourself, which is how to watch its
+  output while debugging a failure.
+
+Useful commands:
+
+```bash
+npm run e2e -- --headed          # watch it
+npm run e2e -- -g "price rise"   # one test
+npm run e2e:ui                   # the Playwright UI
+npm run e2e:report               # last HTML report
 ```
 
 ---
