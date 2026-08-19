@@ -18,7 +18,7 @@ process types that share models and services:
 ```
                        ┌──────────────────────────┐
   browser ──────────▶  │  apps/web (Next.js)      │
-                       │  server components + BFF │
+                       │  server components      │
                        └────────────┬─────────────┘
                                     │ HTTPS, httpOnly cookies
                        ┌────────────▼─────────────┐
@@ -104,7 +104,7 @@ request
 
 ## 3. Data model
 
-PostgreSQL 16 with the `pgvector` and `citext` extensions. All primary keys are UUIDv4
+PostgreSQL 16 with the `pgvector` extension. All primary keys are UUIDv4
 generated application-side (no round trip, opaque IDs). Every organization-owned table
 carries `organization_id` — including tables that could reach the org transitively — so
 a tenant filter never depends on a join being present.
@@ -113,7 +113,7 @@ a tenant filter never depends on a join being present.
 
 | table | purpose |
 |---|---|
-| `users` | credentials, verification state |
+| `users` | credentials, verification state; email stored lower-cased so the unique index is case-insensitive without `citext` |
 | `refresh_tokens` | hashed, rotating, reuse-detected |
 | `verification_tokens` | email verification + password reset (hashed, single use) |
 | `organizations` | tenant root, plan, quota window |
@@ -338,8 +338,10 @@ Next.js App Router, TypeScript strict, Tailwind + a customised shadcn/ui layer.
   selection, command palette.
 * **TanStack Query** is used exclusively for interactive and polling surfaces; static
   reads stay on the server.
-* Mutations go through Next route handlers acting as a thin **BFF**, which attach the
-  CSRF header and keep the API origin out of the browser.
+* Mutations go straight to the API from the browser with `credentials: "include"` and
+  the CSRF header. A BFF proxy was considered and rejected: the API and the web app are
+  same-site in every supported deployment, so the proxy would add a hop and a second place
+  for cookie handling to go wrong without adding a control.
 * Every route ships `loading.tsx` with skeletons matching the final layout, an
   `error.tsx`, and an explicit empty state.
 

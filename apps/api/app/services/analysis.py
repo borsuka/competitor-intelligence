@@ -266,6 +266,9 @@ async def _execute(
 
     # The state we will diff against, captured before the new snapshots land.
     previous_state = await _load_state(session, competitor.id)
+    # Whether there is anything to compare against at all. On a first analysis every
+    # product, plan and page would register as "added", which is noise, not intelligence.
+    had_previous_analysis = await _has_previous_analysis(session, competitor.id)
 
     await _set_stage(session, job, "storing_snapshots")
     await _store_snapshots(session, competitor=competitor, crawl=crawl)
@@ -387,8 +390,12 @@ async def _execute(
 
     # ------------------------------------------------------ change detection
     await _set_stage(session, job, "detecting_changes")
-    current_state = await _load_state(session, competitor.id)
-    detected = detect_changes(previous_state, current_state, competitor_name=competitor.name)
+    if had_previous_analysis:
+        current_state = await _load_state(session, competitor.id)
+        detected = detect_changes(previous_state, current_state, competitor_name=competitor.name)
+    else:
+        log.info("analysis.baseline_established", competitor_id=str(competitor.id))
+        detected = []
 
     change_rows: list[Change] = []
     now = utcnow()
@@ -894,6 +901,18 @@ def _content_fingerprint(crawl: CrawlResult) -> str:
         digest.update(page.url.encode("utf-8"))
         digest.update(page.extracted.text_hash.encode("utf-8"))
     return digest.hexdigest()
+
+
+async def _has_previous_analysis(session: AsyncSession, competitor_id: uuid.UUID) -> bool:
+    """True when this competitor has been analysed before.
+
+    The first run establishes the baseline; only the second and later runs can produce
+    changes.
+    """
+    result = await session.execute(
+        select(Analysis.id).where(Analysis.competitor_id == competitor_id).limit(1)
+    )
+    return result.scalar_one_or_none() is not None
 
 
 async def _find_reusable_analysis(

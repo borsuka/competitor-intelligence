@@ -36,9 +36,17 @@ SENSITIVE_KEY_PARTS = (
 
 REDACTED = "[redacted]"
 
+# Keys that contain a sensitive substring but are not sensitive.  Token *counts* are the
+# main cost signal in this system; redacting them would defeat the purpose of logging them.
+SAFE_KEYS = frozenset(
+    {"tokens_in", "tokens_out", "total_tokens", "ai_tokens_in", "ai_tokens_out", "token_count"}
+)
+
 
 def _is_sensitive(key: str) -> bool:
     lowered = key.lower()
+    if lowered in SAFE_KEYS:
+        return False
     return any(part in lowered for part in SENSITIVE_KEY_PARTS)
 
 
@@ -72,10 +80,12 @@ def configure_logging() -> None:
     settings = get_settings()
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
 
+    # structlog's own processors, not the stdlib ones: the logger factory below is
+    # PrintLogger, which has no .name attribute for stdlib's add_logger_name to read.
+    # The module name is bound explicitly in get_logger() instead.
     shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
+        structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.UnicodeDecoder(),
@@ -108,8 +118,10 @@ def configure_logging() -> None:
         logging.getLogger(noisy).setLevel(max(level, logging.WARNING))
 
 
-def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
-    return structlog.get_logger(name)
+def get_logger(name: str | None = None):
+    """Return a bound logger tagged with the calling module."""
+    logger = structlog.get_logger()
+    return logger.bind(logger=name) if name else logger
 
 
 def bind_context(**kwargs: Any) -> None:

@@ -58,7 +58,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S105", "S106", "S311"]
-"app/ai/mock.py" = ["S311"]  # deterministic non-crypto RNG, documented in module
+"app/ai/providers/mock_provider.py" = ["S311"]  # deterministic non-crypto RNG
+"scripts/seed.py" = ["S311"]              # seeded RNG for reproducible demo data
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

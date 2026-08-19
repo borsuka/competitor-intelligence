@@ -55,8 +55,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         log.warning(
             "api.ai_provider_is_mock",
             detail=(
-                "No AI provider key configured. Analyses will be labelled as "
-                "development output."
+                "No AI provider key configured. Analyses will be labelled as development output."
             ),
         )
 

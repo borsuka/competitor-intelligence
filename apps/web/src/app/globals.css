@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+/*
+  Design system
+  =============
+
+  A competitor intelligence tool has to read as trustworthy, so the palette is almost
+  entirely neutral with a single blue accent reserved for interaction. Colour is used to
+  carry meaning — threat level, severity, provenance — never for decoration. Where a
+  colour carries meaning it is always paired with a label or an icon, because roughly one
+  in twelve men cannot reliably separate red from green.
+
+  Scale: one type ramp, a 4px spacing grid (Tailwind's default), two radii, two shadows.
+*/
+
+@theme {
+  /* Neutrals — a slightly cool grey so charts and data tables sit calmly on the page. */
+  --color-canvas: oklch(99% 0.002 250);
+  --color-surface: oklch(100% 0 0);
+  --color-surface-raised: oklch(98.5% 0.003 250);
+  --color-border: oklch(92% 0.004 250);
+  --color-border-strong: oklch(86% 0.006 250);
+
+  --color-ink: oklch(21% 0.012 260);
+  --color-ink-muted: oklch(48% 0.012 260);
+  --color-ink-subtle: oklch(62% 0.01 260);
+
+  /* Accent: interaction only. If it is blue, it does something. */
+  --color-accent: oklch(52% 0.16 258);
+  --color-accent-hover: oklch(46% 0.17 258);
+  --color-accent-soft: oklch(96% 0.02 258);
+  --color-accent-ink: oklch(100% 0 0);
+
+  /* Semantic — threat, severity, status. */
+  --color-critical: oklch(51% 0.19 25);
+  --color-critical-soft: oklch(96% 0.03 25);
+  --color-high: oklch(60% 0.16 45);
+  --color-high-soft: oklch(96% 0.04 60);
+  --color-moderate: oklch(70% 0.13 85);
+  --color-moderate-soft: oklch(96% 0.05 95);
+  --color-low: oklch(58% 0.13 155);
+  --color-low-soft: oklch(96% 0.03 160);
+  --color-unknown: oklch(62% 0.01 260);
+  --color-unknown-soft: oklch(96% 0.003 260);
+
+  /* Provenance. Observed facts and AI inference must never look identical. */
+  --color-observed: oklch(45% 0.09 200);
+  --color-observed-soft: oklch(96% 0.02 200);
+  --color-inferred: oklch(50% 0.13 300);
+  --color-inferred-soft: oklch(96% 0.025 300);
+
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+
+  --shadow-card: 0 1px 2px oklch(20% 0.02 260 / 0.05);
+  --shadow-raised: 0 4px 16px oklch(20% 0.02 260 / 0.08), 0 1px 2px oklch(20% 0.02 260 / 0.04);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+}
+
+/* Dark theme. Redefines tokens only — no component knows which theme it is in. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-canvas: oklch(17% 0.012 260);
+    --color-surface: oklch(21% 0.013 260);
+    --color-surface-raised: oklch(24% 0.014 260);
+    --color-border: oklch(29% 0.014 260);
+    --color-border-strong: oklch(36% 0.016 260);
+
+    --color-ink: oklch(96% 0.004 260);
+    --color-ink-muted: oklch(72% 0.012 260);
+    --color-ink-subtle: oklch(58% 0.012 260);
+
+    --color-accent: oklch(66% 0.15 258);
+    --color-accent-hover: oklch(72% 0.15 258);
+    --color-accent-soft: oklch(28% 0.05 258);
+    --color-accent-ink: oklch(17% 0.012 260);
+
+    --color-critical: oklch(66% 0.17 25);
+    --color-critical-soft: oklch(27% 0.06 25);
+    --color-high: oklch(72% 0.14 55);
+    --color-high-soft: oklch(27% 0.05 55);
+    --color-moderate: oklch(78% 0.12 90);
+    --color-moderate-soft: oklch(27% 0.05 90);
+    --color-low: oklch(70% 0.13 155);
+    --color-low-soft: oklch(26% 0.05 155);
+    --color-unknown: oklch(65% 0.01 260);
+    --color-unknown-soft: oklch(26% 0.006 260);
+
+    --color-observed: oklch(70% 0.1 200);
+    --color-observed-soft: oklch(26% 0.04 200);
+    --color-inferred: oklch(72% 0.12 300);
+    --color-inferred-soft: oklch(27% 0.05 300);
+
+    --shadow-card: 0 1px 2px oklch(0% 0 0 / 0.3);
+    --shadow-raised: 0 4px 16px oklch(0% 0 0 / 0.4), 0 1px 2px oklch(0% 0 0 / 0.3);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Numbers in tables and metrics must line up column to column. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1, h2, h3, h4 {
+    color: var(--color-ink);
+    font-weight: 600;
+    letter-spacing: -0.011em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* A visible focus ring on every interactive element, always. Keyboard users are not
+     an edge case, and a custom ring beats the browser default only if it is obvious. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  ::selection {
+    background: var(--color-accent-soft);
+    color: var(--color-ink);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+    border: 3px solid var(--color-canvas);
+  }
+}
+
+@layer utilities {
+  /* Skeleton shimmer, disabled for anyone who asked for less motion. */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-raised) 25%,
+      var(--color-border) 37%,
+      var(--color-surface-raised) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+
+  .animate-in {
+    animation: fade-rise 0.18s ease-out;
+  }
+
+  @keyframes fade-rise {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .skeleton {
+      animation: none;
+      background: var(--color-surface-raised);
+    }
+  }
+
+  /* Visible only to screen readers — used for table captions and live regions. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
