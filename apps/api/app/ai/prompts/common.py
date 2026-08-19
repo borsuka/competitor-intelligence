@@ -57,7 +57,7 @@ def format_observed_prices(prices: list[dict]) -> str:
         period = f" per {price['period']}" if price.get("period") else ""
         lines.append(
             f"- {price.get('currency', '?')} {price.get('amount')}{period} "
-            f"(seen near: \"{str(price.get('context', ''))[:160]}\")"
+            f'(seen near: "{str(price.get("context", ""))[:160]}")'
         )
     return "\n".join(lines)
 

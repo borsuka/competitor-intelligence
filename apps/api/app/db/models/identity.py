@@ -37,7 +37,7 @@ class User(UUIDMixin, TimestampMixin, Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    memberships: Mapped[list["Membership"]] = relationship(
+    memberships: Mapped[list[Membership]] = relationship(
         back_populates="user", cascade="all, delete-orphan", lazy="selectin"
     )
 
@@ -102,7 +102,7 @@ class Organization(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     own_company_url: Mapped[str | None] = mapped_column(String(2048))
     own_company_description: Mapped[str | None] = mapped_column(Text)
 
-    memberships: Mapped[list["Membership"]] = relationship(
+    memberships: Mapped[list[Membership]] = relationship(
         back_populates="organization", cascade="all, delete-orphan"
     )
 
@@ -124,7 +124,9 @@ class Membership(UUIDMixin, TimestampMixin, Base):
     user: Mapped[User] = relationship(back_populates="memberships")
 
     __table_args__ = (
-        UniqueConstraint("organization_id", "user_id", name="uq_memberships_organization_id_user_id"),
+        UniqueConstraint(
+            "organization_id", "user_id", name="uq_memberships_organization_id_user_id"
+        ),
         Index("ix_memberships_user_id", "user_id"),
     )
 
@@ -147,9 +149,7 @@ class Invitation(UUIDMixin, TimestampMixin, Base):
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    __table_args__ = (
-        Index("ix_invitations_organization_id_email", "organization_id", "email"),
-    )
+    __table_args__ = (Index("ix_invitations_organization_id_email", "organization_id", "email"),)
 
 
 class UsageCounter(UUIDMixin, TimestampMixin, Base):
@@ -171,7 +171,9 @@ class UsageCounter(UUIDMixin, TimestampMixin, Base):
     ai_tokens_out: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("organization_id", "period", name="uq_usage_counters_organization_id_period"),
+        UniqueConstraint(
+            "organization_id", "period", name="uq_usage_counters_organization_id_period"
+        ),
     )
 
 
@@ -206,12 +208,12 @@ class AuditLog(UUIDMixin, Base):
 
 
 __all__ = [
-    "User",
-    "RefreshToken",
-    "VerificationToken",
-    "Organization",
-    "Membership",
-    "Invitation",
-    "UsageCounter",
     "AuditLog",
+    "Invitation",
+    "Membership",
+    "Organization",
+    "RefreshToken",
+    "UsageCounter",
+    "User",
+    "VerificationToken",
 ]

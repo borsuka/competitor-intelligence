@@ -51,7 +51,9 @@ CURRENCY_CODES = frozenset(
 
 # Matches "€49", "$1,299.00", "49 EUR", "USD 19.99/mo".  Deliberately conservative: a
 # false positive here becomes a wrong price in the product, which is worse than a miss.
-_SYMBOL_ALTERNATION = "|".join(re.escape(sym) for sym in sorted(CURRENCY_SYMBOLS, key=len, reverse=True))
+_SYMBOL_ALTERNATION = "|".join(
+    re.escape(sym) for sym in sorted(CURRENCY_SYMBOLS, key=len, reverse=True)
+)
 PRICE_PATTERN = re.compile(
     rf"(?P<pre>{_SYMBOL_ALTERNATION}|\b(?:{'|'.join(CURRENCY_CODES)})\b)\s*"
     r"(?P<amount1>\d{1,3}(?:[.,\s]\d{3})*(?:[.,]\d{1,2})?)"
@@ -128,7 +130,7 @@ def parse_amount(raw: str) -> float | None:
     ``1,299.00`` and ``1.299,00`` both mean the same thing; the separator that appears
     last is the decimal one.  Anything ambiguous returns ``None`` rather than a guess.
     """
-    cleaned = raw.strip().replace(" ", "").replace(" ", "")
+    cleaned = raw.strip().replace(" ", "").replace(" ", "")  # noqa: RUF001 - the second is U+00A0, common in prices
     if not cleaned:
         return None
 
@@ -191,6 +193,10 @@ def detect_prices(text: str, *, limit: int = 60) -> list[dict[str, Any]]:
         start = max(0, match.start() - 90)
         end = min(len(text), match.end() + 90)
         context = text[start:end].strip()
+        # The words immediately before a price are what name it, so the left side is
+        # kept separately: with a symmetric window, the first plan on a pricing page
+        # looks like the label for every price on the page.
+        preceding = text[start : match.start()].strip()
 
         period_match = PERIOD_PATTERN.search(context)
         period = None
@@ -204,6 +210,7 @@ def detect_prices(text: str, *, limit: int = 60) -> list[dict[str, Any]]:
                 "currency": currency,
                 "period": period,
                 "context": context,
+                "preceding": preceding,
             }
         )
         if len(results) >= limit:
@@ -225,7 +232,7 @@ def _extract_structured_data(soup: BeautifulSoup) -> list[dict[str, Any]]:
         for item in candidates:
             if isinstance(item, dict):
                 # Keep the shape, drop the bulk: some sites inline enormous graphs.
-                blocks.append({k: v for k, v in list(item.items())[:30]})
+                blocks.append(dict(list(item.items())[:30]))
         if len(blocks) >= 20:
             break
     return blocks
@@ -332,10 +339,10 @@ def extract_page(html: str, url: str, base_domain: str) -> ExtractedPage:
 
 
 __all__ = [
-    "ExtractedPage",
-    "extract_page",
-    "detect_prices",
-    "parse_amount",
-    "CURRENCY_SYMBOLS",
     "CURRENCY_CODES",
+    "CURRENCY_SYMBOLS",
+    "ExtractedPage",
+    "detect_prices",
+    "extract_page",
+    "parse_amount",
 ]

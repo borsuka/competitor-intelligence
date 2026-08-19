@@ -94,9 +94,7 @@ class AlertRule(UUIDMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    change_types: Mapped[list[str]] = mapped_column(
-        ARRAY(String(40)), default=list, nullable=False
-    )
+    change_types: Mapped[list[str]] = mapped_column(ARRAY(String(40)), default=list, nullable=False)
     min_severity: Mapped[Severity] = mapped_column(
         Enum(Severity, native_enum=False, length=16), default=Severity.MEDIUM, nullable=False
     )
@@ -212,4 +210,4 @@ class Report(UUIDMixin, TimestampMixin, Base):
     )
 
 
-__all__ = ["Change", "AlertRule", "Notification", "Comparison", "Report"]
+__all__ = ["AlertRule", "Change", "Comparison", "Notification", "Report"]

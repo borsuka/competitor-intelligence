@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 import jwt
 from argon2 import PasswordHasher
-from argon2.exceptions import InvalidHashError, VerifyMismatchError, VerificationError
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 
 from app.core.config import get_settings
 from app.core.errors import TokenError
@@ -89,7 +89,7 @@ def create_token(
     if expires_in is None:
         expires_in = (
             settings.access_token_ttl_seconds
-            if token_type == "access"
+            if token_type == "access"  # noqa: S105 - a token kind, not a credential
             else settings.refresh_token_ttl_seconds
         )
 
@@ -168,14 +168,14 @@ def generate_csrf_token() -> str:
 
 
 __all__ = [
-    "hash_password",
-    "verify_password",
-    "password_needs_rehash",
+    "TokenType",
     "create_token",
     "decode_token",
+    "generate_csrf_token",
     "generate_opaque_token",
     "hash_opaque_token",
+    "hash_password",
+    "password_needs_rehash",
     "tokens_equal",
-    "generate_csrf_token",
-    "TokenType",
+    "verify_password",
 ]

@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     public_web_url: str = "http://localhost:3000"
 
     # ------------------------------------------------------------- security
-    secret_key: str = "dev-insecure-secret-change-me"
+    secret_key: str = "dev-insecure-secret-change-me"  # noqa: S105 - placeholder, refused in production
     password_pepper: SecretStr = SecretStr("")
     access_token_ttl_seconds: int = 15 * 60
     refresh_token_ttl_seconds: int = 30 * 24 * 60 * 60
@@ -171,9 +171,7 @@ class Settings(BaseSettings):
         if "localhost" in self.database_url:
             problems.append("DATABASE_URL still points at localhost")
         if problems:
-            raise ValueError(
-                "Refusing to start in production:\n  - " + "\n  - ".join(problems)
-            )
+            raise ValueError("Refusing to start in production:\n  - " + "\n  - ".join(problems))
         return self
 
 
@@ -192,4 +190,4 @@ def generate_secret() -> str:
     return secrets.token_urlsafe(48)
 
 
-__all__ = ["Settings", "get_settings", "generate_secret", "Environment"]
+__all__ = ["Environment", "Settings", "generate_secret", "get_settings"]

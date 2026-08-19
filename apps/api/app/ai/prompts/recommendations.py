@@ -47,12 +47,20 @@ def build(
     analysis_summary: str,
 ) -> PromptSpec:
     nonce = make_nonce()
+    # The analysis is itself derived from the competitor's own website, so it stays
+    # inside the fence: content that was untrusted upstream does not become trusted by
+    # having passed through a model.
+    analysis_block = fence(
+        analysis_summary,
+        nonce=nonce,
+        label="competitor analysis derived from their website",
+    )
 
     user = (
         f"The user's company: {own_company_name}\n"
         f"{own_company_description}\n\n"
         f"Competitor analysed: {competitor_name}\n"
-        f"Analysis of that competitor:\n{fence(analysis_summary, nonce=nonce, label='competitor analysis derived from their website')}\n\n"
+        f"Analysis of that competitor:\n{analysis_block}\n\n"
         f"What should {own_company_name} consider doing in response to {competitor_name}?"
     )
 
@@ -66,4 +74,4 @@ def build(
     )
 
 
-__all__ = ["build", "VERSION", "NAME"]
+__all__ = ["NAME", "VERSION", "build"]

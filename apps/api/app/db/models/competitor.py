@@ -64,7 +64,7 @@ class Competitor(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     latest_overall_score: Mapped[float | None] = mapped_column(Float)
     latest_analysis_id: Mapped[uuid.UUID | None] = mapped_column(PgUUID(as_uuid=True))
 
-    pages: Mapped[list["CompetitorPage"]] = relationship(
+    pages: Mapped[list[CompetitorPage]] = relationship(
         back_populates="competitor", cascade="all, delete-orphan"
     )
 
@@ -100,12 +100,14 @@ class CompetitorPage(UUIDMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     competitor: Mapped[Competitor] = relationship(back_populates="pages")
-    snapshots: Mapped[list["PageSnapshot"]] = relationship(
+    snapshots: Mapped[list[PageSnapshot]] = relationship(
         back_populates="page", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
-        UniqueConstraint("competitor_id", "url_hash", name="uq_competitor_pages_competitor_id_url_hash"),
+        UniqueConstraint(
+            "competitor_id", "url_hash", name="uq_competitor_pages_competitor_id_url_hash"
+        ),
         Index("ix_competitor_pages_competitor_id_page_type", "competitor_id", "page_type"),
     )
 

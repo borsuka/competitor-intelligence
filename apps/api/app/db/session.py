@@ -9,7 +9,12 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.core.config import get_settings
 
@@ -86,9 +91,9 @@ async def dispose_engine() -> None:
 
 
 __all__ = [
+    "dispose_engine",
     "get_engine",
     "get_session",
     "get_session_factory",
     "session_scope",
-    "dispose_engine",
 ]

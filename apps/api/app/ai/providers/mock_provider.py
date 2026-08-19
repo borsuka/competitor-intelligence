@@ -117,7 +117,7 @@ class MockProvider:
         plans: list[ExtractedPricingPlan] = []
         seen_plans: set[str] = set()
         for price in observed_prices[:8]:
-            label = self._plan_label(price.get("context", "")) or f"Plan {len(plans) + 1}"
+            label = self._plan_label(price) or f"Plan {len(plans) + 1}"
             if label.lower() in seen_plans:
                 continue
             seen_plans.add(label.lower())
@@ -153,9 +153,7 @@ class MockProvider:
             pricing_plans=plans,
             key_features=[h for h in headings[6:20] if 3 < len(h) < 120][:12],
             pricing_model_notes=(
-                None
-                if plans
-                else "No prices were observed on the crawled pages."
+                None if plans else "No prices were observed on the crawled pages."
             ),
             confidence=0.3 if plans or products else 0.1,
         )
@@ -169,8 +167,8 @@ class MockProvider:
 
         summary_parts = [
             f"Development provider output for {company}.",
-            f"The site's homepage title is \"{title}\"." if title else "",
-            f"Its meta description reads: \"{description}\"." if description else "",
+            f'The site\'s homepage title is "{title}".' if title else "",
+            f'Its meta description reads: "{description}".' if description else "",
             f"{word_count} words of page text were collected across the crawled pages.",
             "No language model was used: this text restates crawler observations only.",
         ]
@@ -182,9 +180,7 @@ class MockProvider:
                 Insight(
                     title="Clear conversion paths",
                     detail=(
-                        "The site presents explicit calls to action: "
-                        + ", ".join(ctas[:4])
-                        + "."
+                        "The site presents explicit calls to action: " + ", ".join(ctas[:4]) + "."
                     ),
                 )
             )
@@ -286,8 +282,18 @@ class MockProvider:
     # ------------------------------------------------------------------ helpers
 
     @staticmethod
-    def _plan_label(context_text: str) -> str | None:
-        match = _PLAN_NAME_PATTERN.search(context_text or "")
+    def _plan_label(price: dict[str, Any]) -> str | None:
+        """Name a plan from the words closest to its price.
+
+        The *last* keyword before the amount, not the first in the window: on a pricing
+        page every tier sits within a hundred characters of the next, so taking the first
+        match would label every price "Free".
+        """
+        preceding = str(price.get("preceding") or "")
+        matches = list(_PLAN_NAME_PATTERN.finditer(preceding))
+        if matches:
+            return matches[-1].group(0).title()
+        match = _PLAN_NAME_PATTERN.search(str(price.get("context") or ""))
         return match.group(0).title() if match else None
 
     async def aclose(self) -> None:
@@ -299,4 +305,4 @@ def deterministic_seed(text: str) -> int:
     return int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:8], 16)
 
 
-__all__ = ["MockProvider", "MOCK_MODEL", "deterministic_seed"]
+__all__ = ["MOCK_MODEL", "MockProvider", "deterministic_seed"]

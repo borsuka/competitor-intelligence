@@ -78,7 +78,7 @@ class RobotsCache:
                 policy.sitemaps = _parse_sitemap_directives(body)
                 delay = parser.crawl_delay(self._settings.scraper_user_agent)
                 policy.crawl_delay = float(delay) if delay else None
-        except Exception as exc:  # noqa: BLE001 - a missing robots.txt must not fail a crawl
+        except Exception as exc:
             log.debug("robots.fetch_failed", origin=origin, error=str(exc))
 
         self._policies[origin] = policy

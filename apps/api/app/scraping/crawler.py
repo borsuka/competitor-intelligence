@@ -98,9 +98,7 @@ class Crawler:
         root = normalize_url(root_url)
         domain = extract_domain(root)
 
-        result = CrawlResult(
-            root_url=root, domain=domain, started_at=started, finished_at=started
-        )
+        result = CrawlResult(root_url=root, domain=domain, started_at=started, finished_at=started)
 
         # 1. Homepage.  If it cannot be fetched there is nothing to analyse, so this is
         #    the one failure that aborts the crawl rather than being collected.
@@ -158,7 +156,7 @@ class Crawler:
             if not await self._robots.allows(url):
                 result.blocked_by_robots += 1
                 return None
-        except Exception as exc:  # noqa: BLE001 - robots must never break a crawl
+        except Exception as exc:
             log.debug("crawler.robots_check_failed", url=url, error=str(exc))
 
         try:
@@ -200,7 +198,7 @@ class Crawler:
             policy = await self._robots.get(root)
             result.has_robots_txt = policy.fetched
             sitemap_urls = await self._robots.sitemaps_for(root)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.debug("crawler.sitemap_lookup_failed", url=root, error=str(exc))
             return []
 
@@ -214,7 +212,7 @@ class Crawler:
                 try:
                     assert_safe_url(sitemap_url)
                     response = await client.get(sitemap_url)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     log.debug("crawler.sitemap_fetch_failed", url=sitemap_url, error=str(exc))
                     continue
                 if response.status_code != 200 or len(response.content) > 5_000_000:
@@ -229,7 +227,7 @@ class Crawler:
                     try:
                         assert_safe_url(nested_url)
                         nested_response = await client.get(nested_url)
-                    except Exception:  # noqa: BLE001, S112
+                    except Exception:  # noqa: S112
                         continue
                     if nested_response.status_code == 200:
                         collected.extend(
@@ -256,4 +254,4 @@ async def crawl_site(root_url: str, *, max_pages: int | None = None) -> CrawlRes
         await crawler.aclose()
 
 
-__all__ = ["Crawler", "CrawlResult", "CrawledPage", "CrawlError", "crawl_site"]
+__all__ = ["CrawlError", "CrawlResult", "CrawledPage", "Crawler", "crawl_site"]

@@ -65,4 +65,4 @@ def build(*, competitor_name: str, change: dict[str, Any]) -> PromptSpec:
     )
 
 
-__all__ = ["build", "VERSION", "NAME"]
+__all__ = ["NAME", "VERSION", "build"]

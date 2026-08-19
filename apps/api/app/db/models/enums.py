@@ -11,19 +11,19 @@ from __future__ import annotations
 import enum
 
 
-class OrgPlan(str, enum.Enum):
+class OrgPlan(enum.StrEnum):
     FREE = "free"
     STARTER = "starter"
     GROWTH = "growth"
     ENTERPRISE = "enterprise"
 
 
-class CompetitorStatus(str, enum.Enum):
+class CompetitorStatus(enum.StrEnum):
     ACTIVE = "active"
     ARCHIVED = "archived"
 
 
-class Importance(str, enum.Enum):
+class Importance(enum.StrEnum):
     """How much a competitor matters to the user — drives monitoring frequency."""
 
     LOW = "low"
@@ -32,7 +32,7 @@ class Importance(str, enum.Enum):
     CRITICAL = "critical"
 
 
-class PageType(str, enum.Enum):
+class PageType(enum.StrEnum):
     HOME = "home"
     PRICING = "pricing"
     PRODUCT = "product"
@@ -47,14 +47,14 @@ class PageType(str, enum.Enum):
     OTHER = "other"
 
 
-class JobType(str, enum.Enum):
+class JobType(enum.StrEnum):
     FULL_ANALYSIS = "full_analysis"
     REFRESH = "refresh"
     COMPARISON = "comparison"
     REPORT = "report"
 
 
-class JobStatus(str, enum.Enum):
+class JobStatus(enum.StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -66,7 +66,7 @@ class JobStatus(str, enum.Enum):
         return self in {JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED}
 
 
-class AnalysisDepth(str, enum.Enum):
+class AnalysisDepth(enum.StrEnum):
     """Cost/quality dial. Controls page budget and which model is used."""
 
     QUICK = "quick"
@@ -74,7 +74,7 @@ class AnalysisDepth(str, enum.Enum):
     DEEP = "deep"
 
 
-class ScoreDimension(str, enum.Enum):
+class ScoreDimension(enum.StrEnum):
     PRODUCT = "product"
     PRICING = "pricing"
     FEATURES = "features"
@@ -85,7 +85,7 @@ class ScoreDimension(str, enum.Enum):
     BRAND = "brand"
 
 
-class ChangeType(str, enum.Enum):
+class ChangeType(enum.StrEnum):
     PRICE_INCREASED = "price_increased"
     PRICE_DECREASED = "price_decreased"
     PLAN_ADDED = "plan_added"
@@ -101,7 +101,7 @@ class ChangeType(str, enum.Enum):
     SCORE_CHANGED = "score_changed"
 
 
-class Severity(str, enum.Enum):
+class Severity(enum.StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -111,34 +111,34 @@ class Severity(str, enum.Enum):
         return {"low": 0, "medium": 1, "high": 2}[self.value]
 
 
-class DataSource(str, enum.Enum):
+class DataSource(enum.StrEnum):
     """Provenance. The UI renders these two differently and must never confuse them."""
 
     OBSERVED = "observed"
     AI_INFERENCE = "ai_inference"
 
 
-class NotificationChannel(str, enum.Enum):
+class NotificationChannel(enum.StrEnum):
     IN_APP = "in_app"
     EMAIL = "email"
     WEBHOOK = "webhook"
 
 
-class NotificationStatus(str, enum.Enum):
+class NotificationStatus(enum.StrEnum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
     READ = "read"
 
 
-class ReportType(str, enum.Enum):
+class ReportType(enum.StrEnum):
     COMPETITOR_OVERVIEW = "competitor_overview"
     COMPARISON = "comparison"
     WEEKLY_INTELLIGENCE = "weekly_intelligence"
     MONTHLY_COMPETITIVE = "monthly_competitive"
 
 
-class BillingPeriod(str, enum.Enum):
+class BillingPeriod(enum.StrEnum):
     MONTHLY = "monthly"
     YEARLY = "yearly"
     ONE_TIME = "one_time"
@@ -146,26 +146,26 @@ class BillingPeriod(str, enum.Enum):
     UNKNOWN = "unknown"
 
 
-class VerificationPurpose(str, enum.Enum):
+class VerificationPurpose(enum.StrEnum):
     EMAIL_VERIFICATION = "email_verification"
-    PASSWORD_RESET = "password_reset"
+    PASSWORD_RESET = "password_reset"  # noqa: S105 - an enum member, not a credential
 
 
 __all__ = [
-    "OrgPlan",
-    "CompetitorStatus",
-    "Importance",
-    "PageType",
-    "JobType",
-    "JobStatus",
     "AnalysisDepth",
-    "ScoreDimension",
+    "BillingPeriod",
     "ChangeType",
-    "Severity",
+    "CompetitorStatus",
     "DataSource",
+    "Importance",
+    "JobStatus",
+    "JobType",
     "NotificationChannel",
     "NotificationStatus",
+    "OrgPlan",
+    "PageType",
     "ReportType",
-    "BillingPeriod",
+    "ScoreDimension",
+    "Severity",
     "VerificationPurpose",
 ]

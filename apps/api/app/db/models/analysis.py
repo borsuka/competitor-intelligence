@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -26,7 +27,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.config import get_settings
 from app.db.base import Base, TimestampMixin, UUIDMixin
 from app.db.models.enums import AnalysisDepth, BillingPeriod, DataSource, JobStatus, JobType
-from pgvector.sqlalchemy import Vector
 
 # Read once at import: the vector column width is part of the schema, so changing it
 # is a migration rather than a runtime switch.
@@ -132,6 +132,9 @@ class Analysis(UUIDMixin, TimestampMixin, Base):
     # Set when the sanitizer detected instruction-like text in scraped content.  Surfaced
     # in the UI so a user can tell why an analysis looks odd.
     injection_flags: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    # Corrections the pipeline applied to the model's output, e.g. a price that was
+    # discarded because it did not appear on any crawled page.  Shown to the user.
+    data_notes: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
 
     tokens_in: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     tokens_out: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -303,4 +306,5 @@ class Embedding(UUIDMixin, Base):
         Index("ix_embeddings_competitor_id_source_type", "competitor_id", "source_type"),
     )
 
-__all__ = ["AnalysisJob", "Analysis", "Product", "PricingPlan", "Score", "Embedding"]
+
+__all__ = ["Analysis", "AnalysisJob", "Embedding", "PricingPlan", "Product", "Score"]

@@ -277,4 +277,4 @@ def _summarize_extraction(extracted: ExtractionResult) -> str:
     )
 
 
-__all__ = ["AIService", "build_provider", "enforce_observed_prices", "DEPTH_BUDGET"]
+__all__ = ["DEPTH_BUDGET", "AIService", "build_provider", "enforce_observed_prices"]

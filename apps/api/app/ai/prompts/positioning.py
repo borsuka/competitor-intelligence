@@ -82,13 +82,13 @@ def build(
             "domain": domain,
             "page_title": pages[0].get("title") if pages else None,
             "meta_description": pages[0].get("meta_description") if pages else None,
-            "calls_to_action": [
-                cta for page in pages for cta in page.get("calls_to_action", [])
-            ][:10],
+            "calls_to_action": [cta for page in pages for cta in page.get("calls_to_action", [])][
+                :10
+            ],
             "word_count": sum(int(page.get("word_count") or 0) for page in pages),
             "marketing_channels": [],
         },
     )
 
 
-__all__ = ["build", "VERSION", "NAME"]
+__all__ = ["NAME", "VERSION", "build"]

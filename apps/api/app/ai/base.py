@@ -8,7 +8,7 @@ package and nothing else.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Generic, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from pydantic import BaseModel
 
@@ -16,7 +16,7 @@ TSchema = TypeVar("TSchema", bound=BaseModel)
 
 
 @dataclass
-class AIResult(Generic[TSchema]):
+class AIResult[TSchema: BaseModel]:
     """A validated provider response plus the metadata needed for cost and provenance."""
 
     data: TSchema
@@ -90,8 +90,8 @@ class EmbeddingProvider(Protocol):
 
 __all__ = [
     "AIProvider",
-    "EmbeddingProvider",
     "AIResult",
+    "EmbeddingProvider",
     "EmbeddingResult",
     "PromptSpec",
     "TSchema",

@@ -26,11 +26,11 @@ PROMPT_VERSIONS: dict[str, str] = {
 }
 
 __all__ = [
+    "PROMPT_VERSIONS",
+    "change_summary",
+    "common",
+    "comparison",
     "extraction",
     "positioning",
     "recommendations",
-    "comparison",
-    "change_summary",
-    "common",
-    "PROMPT_VERSIONS",
 ]

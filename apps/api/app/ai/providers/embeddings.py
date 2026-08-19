@@ -35,8 +35,49 @@ _TOKEN_PATTERN = re.compile(r"[a-z0-9]+", re.IGNORECASE)
 
 # Common words carry no retrieval signal and would dominate a bag-of-words vector.
 _STOPWORDS = frozenset(
-    """a an and are as at be by for from has have in is it its of on or that the to was
-    were will with you your we our us this these those they them their he she his her""".split()
+    [
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "has",
+        "have",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "to",
+        "was",
+        "were",
+        "will",
+        "with",
+        "you",
+        "your",
+        "we",
+        "our",
+        "us",
+        "this",
+        "these",
+        "those",
+        "they",
+        "them",
+        "their",
+        "he",
+        "she",
+        "his",
+        "her",
+    ]
 )
 
 

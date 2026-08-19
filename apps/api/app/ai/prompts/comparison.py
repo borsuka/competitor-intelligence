@@ -66,7 +66,11 @@ def build(*, competitors: list[dict[str, Any]], matrix: dict[str, Any]) -> Promp
         "Score matrix (computed deterministically from observed data):\n"
         + ("\n".join(matrix_lines) or "(no scores available)")
         + "\n\nCompetitor profiles:\n"
-        + fence("\n\n".join(blocks), nonce=nonce, label="competitor analyses derived from their websites")
+        + fence(
+            "\n\n".join(blocks),
+            nonce=nonce,
+            label="competitor analyses derived from their websites",
+        )
         + "\n\nCompare these competitors and identify the strongest, the biggest threat, "
         "and where the openings are."
     )
@@ -79,11 +83,9 @@ def build(*, competitors: list[dict[str, Any]], matrix: dict[str, Any]) -> Promp
         name=NAME,
         metadata={
             "competitor_names": [c["name"] for c in competitors],
-            "overall_scores": {
-                c["name"]: c.get("overall_score") for c in competitors
-            },
+            "overall_scores": {c["name"]: c.get("overall_score") for c in competitors},
         },
     )
 
 
-__all__ = ["build", "VERSION", "NAME"]
+__all__ = ["NAME", "VERSION", "build"]

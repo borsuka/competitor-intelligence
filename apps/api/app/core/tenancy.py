@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 
-class Role(str, enum.Enum):
+class Role(enum.StrEnum):
     """Organization roles, ordered from most to least privileged."""
 
     OWNER = "owner"
@@ -24,7 +24,7 @@ class Role(str, enum.Enum):
     def rank(self) -> int:
         return _ROLE_RANK[self]
 
-    def can(self, required: "Role") -> bool:
+    def can(self, required: Role) -> bool:
         """True when this role is at least as privileged as ``required``."""
         return self.rank <= required.rank
 
@@ -49,9 +49,7 @@ class TenantScope:
         from app.core.errors import PermissionDeniedError
 
         if not self.role.can(minimum):
-            raise PermissionDeniedError(
-                f"This action requires the {minimum.value} role or higher."
-            )
+            raise PermissionDeniedError(f"This action requires the {minimum.value} role or higher.")
 
     @property
     def is_read_only(self) -> bool:

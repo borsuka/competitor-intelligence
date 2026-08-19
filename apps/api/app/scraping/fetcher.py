@@ -222,9 +222,11 @@ class PlaywrightFetcher:
             # Block heavy subresources: we want the DOM, not the imagery.
             await page.route(
                 "**/*",
-                lambda route: route.abort()
-                if route.request.resource_type in {"image", "media", "font"}
-                else route.continue_(),
+                lambda route: (
+                    route.abort()
+                    if route.request.resource_type in {"image", "media", "font"}
+                    else route.continue_()
+                ),
             )
             response = await page.goto(
                 url,
@@ -280,10 +282,10 @@ def build_fetcher() -> PageFetcher:
 
 
 __all__ = [
-    "FetchResult",
-    "PageFetcher",
-    "HttpFetcher",
-    "PlaywrightFetcher",
     "DomainThrottle",
+    "FetchResult",
+    "HttpFetcher",
+    "PageFetcher",
+    "PlaywrightFetcher",
     "build_fetcher",
 ]

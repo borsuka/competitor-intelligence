@@ -2,7 +2,7 @@
 name = "sentinel-api"
 version = "0.1.0"
 description = "Sentinel — AI competitor intelligence API and workers"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
@@ -45,7 +45,7 @@ include = ["app*"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
@@ -72,7 +72,7 @@ markers = [
 filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
 warn_unused_ignores = true

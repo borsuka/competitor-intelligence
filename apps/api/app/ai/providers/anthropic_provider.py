@@ -116,7 +116,11 @@ class AnthropicProvider:
                 ],
                 tool_choice={"type": "tool", "name": TOOL_NAME},
             )
-        except (anthropic.RateLimitError, anthropic.APIConnectionError, anthropic.InternalServerError) as exc:
+        except (
+            anthropic.RateLimitError,
+            anthropic.APIConnectionError,
+            anthropic.InternalServerError,
+        ) as exc:
             raise _Transient(str(exc)) from exc
         except anthropic.APIStatusError as exc:
             if exc.status_code >= 500:
@@ -142,4 +146,4 @@ class AnthropicProvider:
         await self._client.close()
 
 
-__all__ = ["AnthropicProvider", "TOOL_NAME"]
+__all__ = ["TOOL_NAME", "AnthropicProvider"]

@@ -77,4 +77,4 @@ def build(
     )
 
 
-__all__ = ["build", "VERSION", "NAME"]
+__all__ = ["NAME", "VERSION", "build"]

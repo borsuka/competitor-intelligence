@@ -154,16 +154,16 @@ class SentimentResult(StrictModel):
 
 
 __all__ = [
-    "StrictModel",
+    "ChangeSummary",
+    "ComparisonInsights",
     "Evidence",
-    "Insight",
-    "ExtractedProduct",
     "ExtractedPricingPlan",
+    "ExtractedProduct",
     "ExtractionResult",
+    "Insight",
     "PositioningResult",
     "Recommendation",
     "RecommendationResult",
-    "ComparisonInsights",
-    "ChangeSummary",
     "SentimentResult",
+    "StrictModel",
 ]

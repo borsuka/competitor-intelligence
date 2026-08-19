@@ -18,16 +18,56 @@ from app.scraping.urls import is_probably_binary, normalize_url, same_site
 # Base value is what one page of this type is worth to an analysis: pricing is the single
 # most informative page on a SaaS site, careers pages tell us almost nothing.
 _RULES: tuple[tuple[PageType, float, tuple[str, ...], tuple[str, ...]], ...] = (
-    (PageType.PRICING, 10.0, ("pricing", "price", "plans", "subscribe", "buy", "tarif", "cennik"), ("pricing", "plans", "how much")),
-    (PageType.PRODUCT, 8.0, ("product", "products", "solutions", "platform", "app", "services"), ("product", "solution", "platform")),
-    (PageType.FEATURES, 7.5, ("features", "feature", "capabilities", "what-we-do", "how-it-works"), ("features", "capabilities", "how it works")),
-    (PageType.ABOUT, 5.5, ("about", "about-us", "company", "who-we-are", "story", "team"), ("about", "company", "our story")),
-    (PageType.CASE_STUDY, 5.0, ("case-study", "case-studies", "customers", "customer-stories", "success"), ("case study", "customer", "success story")),
-    (PageType.DOCS, 3.0, ("docs", "documentation", "developers", "api", "guides"), ("docs", "documentation", "api")),
-    (PageType.BLOG, 2.5, ("blog", "news", "insights", "resources", "articles", "press"), ("blog", "news", "resources")),
+    (
+        PageType.PRICING,
+        10.0,
+        ("pricing", "price", "plans", "subscribe", "buy", "tarif", "cennik"),
+        ("pricing", "plans", "how much"),
+    ),
+    (
+        PageType.PRODUCT,
+        8.0,
+        ("product", "products", "solutions", "platform", "app", "services"),
+        ("product", "solution", "platform"),
+    ),
+    (
+        PageType.FEATURES,
+        7.5,
+        ("features", "feature", "capabilities", "what-we-do", "how-it-works"),
+        ("features", "capabilities", "how it works"),
+    ),
+    (
+        PageType.ABOUT,
+        5.5,
+        ("about", "about-us", "company", "who-we-are", "story", "team"),
+        ("about", "company", "our story"),
+    ),
+    (
+        PageType.CASE_STUDY,
+        5.0,
+        ("case-study", "case-studies", "customers", "customer-stories", "success"),
+        ("case study", "customer", "success story"),
+    ),
+    (
+        PageType.DOCS,
+        3.0,
+        ("docs", "documentation", "developers", "api", "guides"),
+        ("docs", "documentation", "api"),
+    ),
+    (
+        PageType.BLOG,
+        2.5,
+        ("blog", "news", "insights", "resources", "articles", "press"),
+        ("blog", "news", "resources"),
+    ),
     (PageType.CONTACT, 2.0, ("contact", "contact-us", "support", "help"), ("contact", "support")),
     (PageType.CAREERS, 0.6, ("careers", "jobs", "hiring", "work-with-us"), ("careers", "jobs")),
-    (PageType.LEGAL, 0.2, ("privacy", "terms", "legal", "cookie", "gdpr", "imprint", "dpa"), ("privacy", "terms", "legal")),
+    (
+        PageType.LEGAL,
+        0.2,
+        ("privacy", "terms", "legal", "cookie", "gdpr", "imprint", "dpa"),
+        ("privacy", "terms", "legal"),
+    ),
 )
 
 # Query strings and deep paths usually mean a filtered listing or a paginated archive.
@@ -132,7 +172,9 @@ def rank_pages(
         seen.add(url)
         page_type, score = classify_url(url, link.get("text", ""))
         candidates.append(
-            DiscoveredPage(url=url, page_type=page_type, score=score, anchor_text=link.get("text", "")[:200])
+            DiscoveredPage(
+                url=url, page_type=page_type, score=score, anchor_text=link.get("text", "")[:200]
+            )
         )
 
     candidates.sort(key=lambda page: (-page.score, len(page.url)))
@@ -170,4 +212,4 @@ def parse_sitemap_urls(xml: str, *, base_domain: str, limit: int = 500) -> list[
     return urls
 
 
-__all__ = ["DiscoveredPage", "classify_url", "rank_pages", "parse_sitemap_urls"]
+__all__ = ["DiscoveredPage", "classify_url", "parse_sitemap_urls", "rank_pages"]
