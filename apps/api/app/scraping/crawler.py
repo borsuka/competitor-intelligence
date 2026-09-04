@@ -21,7 +21,8 @@ from app.scraping.discovery import DiscoveredPage, classify_url, parse_sitemap_u
 from app.scraping.extract import ExtractedPage, extract_page
 from app.scraping.fetcher import PageFetcher, build_fetcher
 from app.scraping.robots import RobotsCache
-from app.scraping.urls import assert_safe_url, extract_domain, normalize_url
+from app.scraping.safe_http import send as send_pinned
+from app.scraping.urls import extract_domain, normalize_url
 
 log = get_logger(__name__)
 
@@ -210,8 +211,7 @@ class Crawler:
         ) as client:
             for sitemap_url in sitemap_urls[:3]:
                 try:
-                    assert_safe_url(sitemap_url)
-                    response = await client.get(sitemap_url)
+                    response = await send_pinned(client, "GET", sitemap_url)
                 except Exception as exc:
                     log.debug("crawler.sitemap_fetch_failed", url=sitemap_url, error=str(exc))
                     continue
@@ -225,8 +225,7 @@ class Crawler:
                 collected.extend(direct)
                 for nested_url in nested[:2]:
                     try:
-                        assert_safe_url(nested_url)
-                        nested_response = await client.get(nested_url)
+                        nested_response = await send_pinned(client, "GET", nested_url)
                     except Exception:  # noqa: S112
                         continue
                     if nested_response.status_code == 200:

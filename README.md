@@ -131,6 +131,12 @@ npx playwright install chromium   # once
 npm run e2e
 ```
 
+Both suites reach PostgreSQL and Redis on the compose defaults. If `.env` overrides
+`POSTGRES_PORT`, `POSTGRES_PASSWORD` or `REDIS_URL`, pass the matching addresses in —
+`TEST_DATABASE_URL` for the integration suite, `E2E_DATABASE_URL` and `E2E_REDIS_URL` for
+the browser suite — or they fail at connection time with an authentication error rather
+than a useful one.
+
 Three layers, each testing something the others cannot:
 
 * **Unit** — pure logic with no dependencies: the SSRF guard, scoring, change detection,

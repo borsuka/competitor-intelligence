@@ -89,6 +89,7 @@ fetch is server-side.
 url → scheme, port, credential and hostname checks
     → resolve DNS ourselves, inspect every A/AAAA record
     → reject private, loopback, link-local, CGNAT, reserved, ULA
+    → connect to the address that was checked, not to the name
     → fetch with redirects DISABLED
     → re-validate every redirect hop through the same guard
     → content-type allow-list, 2 MB cap, 15 s timeout
@@ -99,26 +100,39 @@ RFC1918, `100.64/10`, `169.254/16` (which covers `169.254.169.254`), IPv6 loopba
 ULA, IPv4-mapped IPv6, single-label hostnames, and `.local` / `.internal` / `.corp`
 suffixes.
 
-Two details that are easy to get wrong and are handled here:
+Three details that are easy to get wrong and are handled here:
 
 * **Redirects are followed manually.** Letting the HTTP client follow them would open a
   socket to a destination nothing validated. "Public URL 302s to the metadata endpoint" is
   the classic bypass.
+* **The connection is pinned to the validated address.** Checking a *name* and then handing
+  that name to the HTTP client leaves a window in which the second lookup can answer
+  differently from the first — DNS rebinding, and it defeats any guard that checks names
+  rather than destinations. `app/scraping/safe_http.py` sends the request to the address
+  the guard inspected; the hostname still travels in the `Host` header and as the TLS
+  server name, so virtual hosting and certificate verification are unaffected. A name with
+  both an A and an AAAA record falls through to the next address on a connection failure,
+  but not on a timeout: retrying a timeout would multiply the crawl's worst case by the
+  number of records.
 * **Errors do not say what was found.** A message like "192.168.1.50 is private" turns the
   crawler into an internal network scanner with a helpful response channel. Every rejection
   returns the same opaque message.
 
-The webhook alert channel runs through the same guard, because it is the same attack with
-a different entry point.
+Every outbound request on a user-supplied URL goes through that one function: page fetches,
+`robots.txt`, sitemaps and alert webhooks. The webhook channel matters as much as the
+crawler — a webhook pointed at `169.254.169.254` is the same attack with a different entry
+point.
 
-`tests/unit/test_urls.py` covers every vector above.
+`tests/unit/test_urls.py` covers every vector above; `tests/unit/test_ssrf_pinning.py`
+covers the pinning, including a lookup that flips to the metadata address between
+validation and connection.
 
-**Known limitation.** There is a TOCTOU window between DNS validation and connection: a
-hostname could resolve to a public address for the guard and a private one for the socket
-(DNS rebinding). Closing it fully requires pinning the connection to the validated IP with
-a custom transport. It is not implemented. The practical impact is limited — the response
-is not echoed back to the attacker, and the crawler only follows `text/html` — but it is a
-real gap, stated rather than hidden.
+**Known limitation.** Pinning applies to the HTTP fetcher, which is the default. It does
+not apply to the optional Playwright renderer (`SCRAPER_ENABLE_JS=true`): the browser
+performs its own DNS resolution and Chromium's `--host-resolver-rules` is a launch
+argument, so it cannot be set per request against a shared browser. The guard still runs
+before navigation and the final URL is re-validated afterwards, but the rebinding window
+remains open in that mode. Enable JavaScript rendering only where egress is firewalled.
 
 ---
 

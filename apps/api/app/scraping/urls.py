@@ -191,6 +191,33 @@ def assert_safe_url(url: str) -> ResolvedTarget:
     return ResolvedTarget(url=url, hostname=hostname, port=port, ip_addresses=addresses)
 
 
+def is_ip_literal(hostname: str) -> bool:
+    """True when the host is already an address, so there is nothing to resolve."""
+    try:
+        ipaddress.ip_address(hostname.strip("[]"))
+    except ValueError:
+        return False
+    return True
+
+
+def pinned_url(url: str, ip: str) -> str:
+    """Rewrite ``url`` so the host is the address the guard actually checked.
+
+    Validating a name and then handing that name back to the HTTP client leaves a gap:
+    nothing obliges the second lookup to return the first lookup's answer. Sending the
+    request to the checked address closes it. The name still travels in the ``Host``
+    header and in the TLS handshake, so virtual hosting and certificate verification are
+    unaffected.
+    """
+    parsed = urlparse(url.strip())
+    address = ipaddress.ip_address(ip)
+    host = f"[{address}]" if address.version == 6 else str(address)
+    netloc = f"{host}:{parsed.port}" if parsed.port else host
+    return urlunparse(
+        (parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment)
+    )
+
+
 def normalize_url(url: str, *, keep_query: bool = True) -> str:
     """Canonical form used for deduplication.
 
@@ -299,8 +326,10 @@ __all__ = [
     "ResolvedTarget",
     "assert_safe_url",
     "extract_domain",
+    "is_ip_literal",
     "is_probably_binary",
     "normalize_url",
+    "pinned_url",
     "same_site",
     "url_hash",
 ]

@@ -30,6 +30,7 @@ from app.db.models.enums import (
 )
 from app.db.models.identity import Membership, User
 from app.db.models.monitoring import AlertRule, Change, Notification
+from app.scraping.safe_http import send as send_pinned
 from app.scraping.urls import assert_safe_url
 from app.services import audit
 
@@ -102,10 +103,11 @@ class WebhookSender:
         self._url = url
 
     async def send(self, notification: Notification) -> None:
-        assert_safe_url(self._url)
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
-                response = await client.post(
+                response = await send_pinned(
+                    client,
+                    "POST",
                     self._url,
                     json={
                         "title": notification.title,

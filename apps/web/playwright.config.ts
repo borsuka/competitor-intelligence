@@ -85,7 +85,9 @@ export default defineConfig({
 
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
+  reporter: process.env.CI
+    ? [["list"], ["html", { open: "never" }]]
+    : [["list"]],
 
   // Generous, because several tests wait on a real crawl and a real worker round trip —
   // and a couple wait on two of them in sequence. A test timeout shorter than the
@@ -138,7 +140,11 @@ export default defineConfig({
       command: `node -e "require('node:fs').rmSync('.next-e2e',{recursive:true,force:true})" && npx next build && npx next start --port ${WEB_PORT}`,
       url: `${WEB_URL}/login`,
       reuseExistingServer: process.env.E2E_REUSE_SERVERS === "1",
-      timeout: 300_000,
+      // A production build of this app takes 90s to 135s on a quiet machine, and a run
+      // competing with a dev server has overshot 300s. Next's build cache does not help
+      // here — a warm build measured slower than a cold one — so the headroom has to come
+      // from the timeout rather than from skipping the wipe above.
+      timeout: 600_000,
       env: {
         NEXT_PUBLIC_API_URL: API_URL,
         API_URL,

@@ -3,7 +3,9 @@
 ``follow_redirects`` is off on purpose.  Letting httpx follow a redirect would open a
 socket to a destination nothing validated — and "public URL redirects to
 169.254.169.254" is the classic SSRF bypass.  The loop here re-runs
-:func:`assert_safe_url` for each hop instead.
+:func:`assert_safe_url` for each hop instead, and every hop is sent through
+:func:`app.scraping.safe_http.send`, which connects to the address that was checked
+rather than resolving the name a second time.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ import httpx
 from app.core.config import get_settings
 from app.core.errors import FetchError, UnsafeURLError
 from app.core.logging import get_logger
+from app.scraping.safe_http import send as send_pinned
 from app.scraping.urls import assert_safe_url, normalize_url
 
 log = get_logger(__name__)
@@ -108,7 +111,7 @@ class HttpFetcher:
 
         for hop in range(self._settings.scraper_max_redirects + 1):
             try:
-                response = await self._client.get(current)
+                response = await send_pinned(self._client, "GET", current, target=target)
             except httpx.TimeoutException as exc:
                 raise FetchError("The request timed out.", code="fetch_timeout") from exc
             except httpx.HTTPError as exc:
@@ -122,8 +125,9 @@ class HttpFetcher:
                     raise FetchError("Redirect without a destination.", code="fetch_bad_redirect")
                 current = urljoin(current, location)
                 chain.append(current)
-                # The whole point of the manual loop: validate the new destination.
-                assert_safe_url(current)
+                # The whole point of the manual loop: validate the new destination, and
+                # carry its addresses forward so the next hop is pinned to them too.
+                target = assert_safe_url(current)
                 if hop == self._settings.scraper_max_redirects:
                     raise FetchError("Too many redirects.", code="fetch_too_many_redirects")
                 continue
@@ -179,7 +183,12 @@ class PlaywrightFetcher:
 
     Off by default because a headless browser costs roughly three times the memory of an
     httpx request and most marketing sites are server-rendered.  The SSRF guard still runs
-    first, and the browser is launched with navigation restricted to the validated URL.
+    first, and the final URL is re-validated after navigation.
+
+    One caveat, documented in ``docs/security.md``: unlike the HTTP fetcher, this path
+    cannot pin the connection to the validated address.  Chromium resolves DNS itself and
+    its resolver rules are a launch argument, so they cannot be set per request against a
+    shared browser.  Enable JavaScript rendering only where egress is firewalled.
 
     Requires the optional extra: ``pip install -e '.[js]' && playwright install chromium``.
     """

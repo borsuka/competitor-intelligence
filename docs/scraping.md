@@ -29,17 +29,25 @@ service layer where transactions belong.
 url → scheme, port, credentials, hostname shape
     → resolve DNS ourselves, inspect every A/AAAA record
     → reject private, loopback, link-local, CGNAT, reserved, ULA, IPv4-mapped
+    → connect to the address that was checked, not to the name
     → fetch with redirects DISABLED
     → re-validate every hop through the same guard, max 5
     → content-type allow-list, 2 MB cap, 15 s timeout
 ```
 
-Three decisions worth keeping:
+Four decisions worth keeping:
 
 **DNS is resolved here, not trusted.** `evil.example.com` is free to resolve to
 `169.254.169.254`. The guard inspects every returned address, and rejects if *any* of them
 is private — a rebinding attack that returns one public and one private record must not be
 a coin flip.
+
+**The connection is pinned to the address that was checked.** Validating a name and then
+handing that name to the HTTP client leaves a window in which the second lookup answers
+differently from the first. `app/scraping/safe_http.py` sends the request to the inspected
+address instead, with the hostname still in the `Host` header and the TLS server name.
+Every outbound request on a user-supplied URL goes through it — pages, `robots.txt`,
+sitemaps and alert webhooks.
 
 **`follow_redirects` is off.** Letting the client follow a redirect opens a socket to a
 destination nothing validated. "Public URL 302s to the metadata endpoint" is the classic
@@ -52,9 +60,9 @@ convenient response channel.
 A test-only escape hatch, `SCRAPER_ALLOW_PRIVATE_NETWORKS`, disables the IP checks for
 local test servers. Production startup refuses to run with it enabled.
 
-**Known gap:** a TOCTOU window between validation and connection. Closing it needs a
-transport that pins the connection to the validated IP. See
-[security.md](security.md#ssrf).
+**Known gap:** pinning covers the HTTP fetcher, which is the default, but not the optional
+Playwright renderer — the browser resolves DNS itself and Chromium's resolver rules are a
+launch argument rather than a per-request setting. See [security.md](security.md#ssrf).
 
 ---
 

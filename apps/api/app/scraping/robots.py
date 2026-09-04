@@ -17,7 +17,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.scraping.urls import assert_safe_url
+from app.scraping.safe_http import send as send_pinned
 
 log = get_logger(__name__)
 
@@ -67,8 +67,7 @@ class RobotsCache:
         robots_url = urljoin(origin + "/", "robots.txt")
 
         try:
-            assert_safe_url(robots_url)
-            response = await self._client.get(robots_url)
+            response = await send_pinned(self._client, "GET", robots_url)
             if response.status_code == 200 and len(response.content) < 512_000:
                 body = response.text
                 parser = RobotFileParser()
